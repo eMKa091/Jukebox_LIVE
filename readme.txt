@@ -1,0 +1,1 @@
+Ahoj Marku, jak se mas?
