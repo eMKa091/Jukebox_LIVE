@@ -44,7 +44,7 @@ st.text(progress_label)
 # Button to send selected songs list
 if st.button("Odeslat vybrané písně z dané kategorie"):
     current_dir = os.path.dirname(os.path.abspath(__file__))
-    file_path = os.path.join(current_dir, "../../webpage_source/vote_results/selected_songs_ceske.txt")
+    file_path = os.path.join(current_dir, "../../webpage_source/vote_results/selected_songs_duety.txt")
     with open(file_path, "w") as file:
         for index in st.session_state.selected_indices["Duety"]:
             file.write(f"{duetsDF.iloc[index]['Pisen']} od {duetsDF.iloc[index]['Umelec']}\n")
