@@ -41,10 +41,10 @@ progress = min(total_selected / 25, 1.0)
 st.progress(progress)
 st.text(progress_label)
 
-# Button to generate the list of selected songs for the category
 if st.button("Odeslat vybrané písně z dané kategorie"):
     current_dir = os.path.dirname(os.path.abspath(__file__))
     file_path = os.path.join(current_dir, "../webpage_source/vote_results/selected_songs_ceske.txt")
+    print(file_path)  # Add this line to print the file path
     with open(file_path, "w") as file:
         for index in st.session_state.selected_indices["České písně"]:
             file.write(f"{ceskeDF.iloc[index]['Pisen']} od {ceskeDF.iloc[index]['Umelec']}\n")
