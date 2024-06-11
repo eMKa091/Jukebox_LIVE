@@ -10,7 +10,7 @@ if "selected_indices" not in st.session_state:
 if "Zpevaci" not in st.session_state.selected_indices:
     st.session_state.selected_indices["Zpevaci"] = []
 
-# Caching data for faster loading
+# Load data
 csvMuziPath = "./dataSources/muzi.csv"
 
 @st.cache_data
@@ -39,3 +39,10 @@ progress_label = f"Celkem vybráno {total_selected} z 25 písní"
 progress = min(total_selected / 25, 1.0)
 st.progress(progress)
 st.text(progress_label)
+
+# Button to send selected songs list
+if st.button("Odeslat vybrané písně z dané kategorie"):
+    with open("selected_songs_zpevaci.txt", "w") as file:
+        for index in st.session_state.selected_indices["Zpevaci"]:
+            file.write(f"{muziDF.iloc[index]['Pisen']} by {muziDF.iloc[index]['Umelec']}\n")
+    st.success("Vybrané písně byly odeslány!")

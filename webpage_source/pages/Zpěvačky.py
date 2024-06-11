@@ -39,3 +39,11 @@ progress_label = f"Celkem vybráno {total_selected} z 25 písní"
 progress = min(total_selected / 25, 1.0)
 st.progress(progress)
 st.text(progress_label)
+
+
+# Button to send selected songs list
+if st.button("Odeslat vybrané písně z dané kategorie"):
+    with open("selected_songs_zpevacky.txt", "w") as file:
+        for index in st.session_state.selected_indices["Zpevacky"]:
+            file.write(f"{zenyDF.iloc[index]['Pisen']} by {zenyDF.iloc[index]['Umelec']}\n")
+    st.success("Vybrané písně byly odeslány!")

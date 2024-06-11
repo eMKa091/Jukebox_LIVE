@@ -10,6 +10,7 @@ if "selected_indices" not in st.session_state:
 if "Rokenrol" not in st.session_state.selected_indices:
     st.session_state.selected_indices["Rokenrol"] = []
 
+# Load data
 csvRokenrolPath = "./dataSources/rokenrol.csv"
 
 @st.cache_data
@@ -38,3 +39,10 @@ progress_label = f"Celkem vybráno {total_selected} z 25 písní"
 progress = min(total_selected / 25, 1.0)
 st.progress(progress)
 st.text(progress_label)
+
+# Button to send selected songs list
+if st.button("Odeslat vybrané písně z dané kategorie"):
+    with open("selected_songs_rokenrol.txt", "w") as file:
+        for index in st.session_state.selected_indices["Rokenrol"]:
+            file.write(f"{rokenrolDF.iloc[index]['Pisen']} by {rokenrolDF.iloc[index]['Umelec']}\n")
+    st.success("Vybrané písně byly odeslány!")
