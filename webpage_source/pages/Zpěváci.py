@@ -1,5 +1,6 @@
 import streamlit as st
 import pandas as pd
+import os
 
 st.set_page_config(page_title='Muži')
 
@@ -42,7 +43,9 @@ st.text(progress_label)
 
 # Button to send selected songs list
 if st.button("Odeslat vybrané písně z dané kategorie"):
-    with open("selected_songs_zpevaci.txt", "w") as file:
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+    file_path = os.path.join(current_dir, "../../webpage_source/vote_results/selected_songs_ceske.txt")
+    with open(file_path, "w") as file:
         for index in st.session_state.selected_indices["Zpevaci"]:
-            file.write(f"{muziDF.iloc[index]['Pisen']} by {muziDF.iloc[index]['Umelec']}\n")
+            file.write(f"{muziDF.iloc[index]['Pisen']} od {muziDF.iloc[index]['Umelec']}\n")
     st.success("Vybrané písně byly odeslány!")
