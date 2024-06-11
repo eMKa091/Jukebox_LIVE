@@ -2,7 +2,7 @@ import streamlit as st
 import pandas as pd
 
 st.header('Dobrý den, vážení hosté!')
-st.write('Prosím vyberte 25 písní z kategorií vlevo, které si přejete slyšet.')
+st.write('Prosím vyberte 25 písní z kategorií z menu, které si přejete slyšet.')
 
 #col1, col2 = st.columns(2, gap="small")
 
