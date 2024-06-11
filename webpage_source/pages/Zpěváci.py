@@ -4,6 +4,14 @@ import os
 from datetime import datetime
 
 st.set_page_config(page_title='Muži')
+
+# Check if uniqueID is set
+if "uniqueID" not in st.session_state:
+    st.warning("Prosím zadejte přezdívku na úvodní stránce!")
+    st.stop()
+
+uniqueID = st.session_state.uniqueID
+
 st.info('Prosím vyberte písně (celkově maximálně 25 napříč všemi kategoriemi)')
 
 # Initialize global variables for each category
