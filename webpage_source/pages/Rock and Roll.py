@@ -24,7 +24,7 @@ rokenrolDF = load_rr_data(csvRokenrolPath)
 # Display checkboxes and update selected indices for Rokenrol category
 for index, row in rokenrolDF.iterrows():
     selected = index in st.session_state.selected_indices["Rokenrol"]
-    selected = st.checkbox(f"{row['Pisen']} od {row['Umelec']}", value=selected, key=f"checkbox_{index}")
+    selected = st.checkbox(f"{row['Umelec']} od {row['Pisen']}", value=selected, key=f"checkbox_{index}")
     if selected and index not in st.session_state.selected_indices["Rokenrol"]:
         st.session_state.selected_indices["Rokenrol"].append(index)
     elif not selected and index in st.session_state.selected_indices["Rokenrol"]:

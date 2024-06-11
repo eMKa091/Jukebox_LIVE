@@ -24,7 +24,7 @@ ceskeDF = load_ceske_data(csvCeskePath)
 # Display checkboxes and update selected indices for České písně category
 for index, row in ceskeDF.iterrows():
     selected = index in st.session_state.selected_indices["České písně"]
-    selected = st.checkbox(f"{row['Pisen']} od {row['Umelec']}", value=selected, key=f"checkbox_{index}")
+    selected = st.checkbox(f"{row['Umelec']} - {row['Pisen']}", value=selected, key=f"checkbox_{index}")
     if selected and index not in st.session_state.selected_indices["České písně"]:
         st.session_state.selected_indices["České písně"].append(index)
     elif not selected and index in st.session_state.selected_indices["České písně"]:
