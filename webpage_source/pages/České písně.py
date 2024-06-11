@@ -1,5 +1,6 @@
 import streamlit as st
 import pandas as pd
+import os
 
 st.set_page_config(page_title='České písně')
 
@@ -40,9 +41,11 @@ progress = min(total_selected / 25, 1.0)
 st.progress(progress)
 st.text(progress_label)
 
-# Button to send selected songs list
+# Button to generate the list of selected songs for the category
 if st.button("Odeslat vybrané písně z dané kategorie"):
-    with open("../webpage_source/vote_results/selected_songs_ceske.txt", "w") as file:
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+    file_path = os.path.join(current_dir, "../webpage_source/vote_results/selected_songs_ceske.txt")
+    with open(file_path, "w") as file:
         for index in st.session_state.selected_indices["České písně"]:
-            file.write(f"{ceskeDF.iloc[index]['Pisen']} by {ceskeDF.iloc[index]['Umelec']}\n")
+            file.write(f"{ceskeDF.iloc[index]['Pisen']} od {ceskeDF.iloc[index]['Umelec']}\n")
     st.success("Vybrané písně byly odeslány!")
