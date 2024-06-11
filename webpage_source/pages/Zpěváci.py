@@ -24,7 +24,7 @@ muziDF = load_male_data(csvMuziPath)
 # Display checkboxes and update selected indices for Zpevaci category
 for index, row in muziDF.iterrows():
     selected = index in st.session_state.selected_indices["Zpevaci"]
-    selected = st.checkbox(f"{row['Umelec']} od {row['Pisen']}", value=selected, key=f"checkbox_{index}")
+    selected = st.checkbox(f"{row['Umelec']} - {row['Pisen']}", value=selected, key=f"checkbox_{index}")
     if selected and index not in st.session_state.selected_indices["Zpevaci"]:
         st.session_state.selected_indices["Zpevaci"].append(index)
     elif not selected and index in st.session_state.selected_indices["Zpevaci"]:

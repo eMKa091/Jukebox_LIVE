@@ -24,7 +24,7 @@ zenyDF = load_female_data(csvZenyPath)
 # Display checkboxes and update selected indices for Zpevacky category
 for index, row in zenyDF.iterrows():
     selected = index in st.session_state.selected_indices["Zpevacky"]
-    selected = st.checkbox(f"{row['Umelec']} od {row['Pisen']}", value=selected, key=f"checkbox_{index}")
+    selected = st.checkbox(f"{row['Umelec']} - {row['Pisen']}", value=selected, key=f"checkbox_{index}")
     if selected and index not in st.session_state.selected_indices["Zpevacky"]:
         st.session_state.selected_indices["Zpevacky"].append(index)
     elif not selected and index in st.session_state.selected_indices["Zpevacky"]:

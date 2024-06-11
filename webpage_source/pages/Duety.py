@@ -24,7 +24,7 @@ duetsDF = load_duets_data(csvDuetyPath)
 # Display checkboxes and update selected indices for Duety category
 for index, row in duetsDF.iterrows():
     selected = index in st.session_state.selected_indices["Duety"]
-    selected = st.checkbox(f"{row['Umelec']} od {row['Pisen']}", value=selected, key=f"checkbox_{index}")
+    selected = st.checkbox(f"{row['Umelec']} - {row['Pisen']}", value=selected, key=f"checkbox_{index}")
     if selected and index not in st.session_state.selected_indices["Duety"]:
         st.session_state.selected_indices["Duety"].append(index)
     elif not selected and index in st.session_state.selected_indices["Duety"]:
