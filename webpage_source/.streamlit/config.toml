@@ -1,2 +1,2 @@
-[browser]
-client.showSidebarNavigation=False
+[global]
+initial_sidebar_state = "collapsed"
