@@ -53,17 +53,16 @@ st.text(progress_label)
 
 # Button to send selected songs list
 if st.button("Odeslat vybrané písně z dané kategorie"):
-    # Generate unique filename based on current timestamp
-    timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-    file_name = f"selected_songs_rokenrol_{timestamp}.txt"
+    # Use uniqueID to generate unique filename
+    file_name = f"selected_songs_rokenrol_{uniqueID}.txt"
     
     # Construct file path
     file_path = os.path.join("webpage_source", "vote_results", file_name)
     
     # Write selected songs to the file
     with open(file_path, "w") as file:
-        for index in st.session_state.selected_indices["Duety"]:
-            file.write(f"{duetsDF.iloc[index]['Pisen']} od {duetsDF.iloc[index]['Umelec']}\n")
+        for index in st.session_state.selected_indices["Rokenrol"]:
+            file.write(f"{rokenrolDF.iloc[index]['Pisen']} od {rokenrolDF.iloc[index]['Umelec']}\n")
     
     # Show success message
     st.success("Vybrané písně byly odeslány!")

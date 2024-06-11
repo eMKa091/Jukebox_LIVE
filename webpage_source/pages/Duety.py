@@ -53,9 +53,8 @@ st.text(progress_label)
 
 # Button to send selected songs list
 if st.button("Odeslat vybrané písně z dané kategorie"):
-    # Generate unique filename based on current timestamp
-    timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-    file_name = f"selected_songs_duety_{timestamp}.txt"
+    # Use uniqueID to generate unique filename
+    file_name = f"selected_songs_duety_{uniqueID}.txt"
     
     # Construct file path
     file_path = os.path.join("webpage_source", "vote_results", file_name)
