@@ -42,7 +42,7 @@ st.text(progress_label)
 
 # Button to send selected songs list
 if st.button("Odeslat vybrané písně z dané kategorie"):
-    with open("vote_results/selected_songs_ceske.txt", "w") as file:
+    with open("../webpage_source/vote_results/selected_songs_ceske.txt", "w") as file:
         for index in st.session_state.selected_indices["České písně"]:
             file.write(f"{ceskeDF.iloc[index]['Pisen']} by {ceskeDF.iloc[index]['Umelec']}\n")
     st.success("Vybrané písně byly odeslány!")
