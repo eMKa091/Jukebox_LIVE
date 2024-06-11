@@ -1,8 +1,10 @@
 import streamlit as st
 import pandas as pd
 import os
+from datetime import datetime
 
 st.set_page_config(page_title='Ženy')
+st.info('Prosím vyberte písně (celkově maximálně 25 napříč všemi kategoriemi)')
 
 # Initialize global variables for each category
 if "selected_indices" not in st.session_state:

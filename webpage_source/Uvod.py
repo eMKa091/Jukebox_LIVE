@@ -1,8 +1,14 @@
 import streamlit as st
-import pandas as pd
 
 st.header('Dobrý den, vážení hosté!')
-st.write('Prosím vyberte 25 písní z kategorií z menu, které si přejete slyšet.')
+st.write('Zadejte prosím vaši přezdívku')
+uniqueID = st.text_input(label="Jmeno ci prezdivka", label_visibility='hidden')
+
+if uniqueID:
+    st.session_state.uniqueID = uniqueID
+    st.success("Uloženo! Přesuneme vás na další stránku...")
+    st.experimental_rerun()  # Rerun the app to apply the session state change
+
 
 #col1, col2 = st.columns(2, gap="small")
 
