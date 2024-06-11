@@ -1,2 +1,1 @@
-Ahoj Marku, jak se mas?
-Ahoj Filo...
+Neco musime napsat
