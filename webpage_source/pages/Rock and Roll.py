@@ -52,7 +52,7 @@ st.progress(progress)
 st.text(progress_label)
 
 # Button to send selected songs list
-if st.button("Odeslat vybrané písně z dané kategorie"):
+if st.button("Uložit výběr z dané kategorie"):
     # Use uniqueID to generate unique filename
     file_name = f"selected_songs_rokenrol_{uniqueID}.txt"
     
@@ -65,4 +65,4 @@ if st.button("Odeslat vybrané písně z dané kategorie"):
             file.write(f"{rokenrolDF.iloc[index]['Pisen']} od {rokenrolDF.iloc[index]['Umelec']}\n")
     
     # Show success message
-    st.success("Vybrané písně byly odeslány!")
+    st.success("Výběr písní z dané kategorie byl uložen!")
