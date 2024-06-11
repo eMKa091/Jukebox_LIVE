@@ -1,16 +1,5 @@
 import streamlit as st
 import pandas as pd
-from streamlit.report_thread import get_report_ctx # type: ignore
-
-st.set_page_config(page_title='Domovská stránka')
-
-def get_session_id():
-    return get_report_ctx().session_id
-
-def get_session_state():
-    session_id = get_session_id()
-    session_state = st.session_state.get(session_id=session_id, selected_songs=[], total_selected=0)
-    return session_state
 
 st.header('Hello dear listener!')
 st.write('Please select up to 25 songs you want us to play from these categories:')
