@@ -18,8 +18,6 @@ if "uniqueID" not in st.session_state:
 uniqueID = st.session_state.uniqueID
 randomizer = st.session_state.randomNumber
 
-st.info('Prosím vyberte písně (celkově maximálně 25 napříč všemi kategoriemi)')
-
 #################################################
 # Initialize global variables for each category #
 #################################################
@@ -45,6 +43,15 @@ duetsDF = load_duets_data(csvDuetyPath)
 ############################
 #   User interface build   #
 ############################
+############################
+# Dropdown navigation menu #
+############################
+
+
+st.divider()
+st.info('Prosím vyberte písně (celkově maximálně 25 napříč všemi kategoriemi)')
+st.divider()
+
 # Display checkboxes and update selected indices for Duety category
 for index, row in duetsDF.iterrows():
     selected = index in st.session_state.selected_indices["Duety"]
