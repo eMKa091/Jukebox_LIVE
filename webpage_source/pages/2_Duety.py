@@ -46,8 +46,6 @@ duetsDF = load_duets_data(csvDuetyPath)
 ############################
 # Dropdown navigation menu #
 ############################
-
-
 st.divider()
 st.info('Prosím vyberte písně (celkově maximálně 25 napříč všemi kategoriemi)')
 st.divider()
