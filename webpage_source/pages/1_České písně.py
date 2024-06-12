@@ -18,8 +18,6 @@ if "uniqueID" not in st.session_state:
 uniqueID = st.session_state.uniqueID
 randomizer = st.session_state.randomNumber
 
-st.info('Prosím vyberte písně (celkově maximálně 25 napříč všemi kategoriemi)')
-
 #################################################
 # Initialize global variables for each category #
 #################################################
@@ -46,6 +44,36 @@ ceskeDF = load_ceske_data(csvCeskePath)
 ############################
 #   User interface build   #
 ############################
+############################
+# Dropdown navigation menu #
+############################
+st.write("Další kategorie:")
+page = st.selectbox(
+    "Vyberte stránku",
+    ["České písně", "Duety", "Rock and roll", "Duety", "Zpěváci", "Zpěvačky", "Výsledky"],label_visibility="hidden"
+)
+
+# Navigation based on the selection
+if page == "České písně":
+    st.session_state.page = "pages/1_České písně.py"
+elif page == "Duety":
+    st.session_state.page = "pages/2_Duety.py"
+    st.switch_page("pages/2_Duety.py")
+elif page == "Rock and roll":
+    st.session_state.page = "pages/3_Rock and roll.py"
+    st.switch_page("pages/3_Rock and roll.py")
+elif page == "Zpěváci":
+    st.session_state.page = "pages/4_Zpěváci.py"
+    st.switch_page("pages/4_Zpěváci.py")
+elif page == "Zpěvačky":
+    st.session_state.page = "pages/5_Zpěvačky.py"
+    st.switch_page("pages/5_Zpěvačky.py")
+elif page == "Výsledky":
+    st.session_state.page = "pages/6_Výsledky.py"
+    st.switch_page("pages/6_Výsledky.py")
+
+st.info('Prosím vyberte písně (celkově maximálně 25 napříč všemi kategoriemi)')
+
 # Display checkboxes and update selected indices for given category
 for index, row in ceskeDF.iterrows():
     selected = index in st.session_state.selected_indices["Ceske"]
