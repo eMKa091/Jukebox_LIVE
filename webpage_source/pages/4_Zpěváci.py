@@ -45,17 +45,22 @@ muziDF = load_male_data(csvMuziPath)
 ############################
 #   User interface build   #
 ############################
-# Display checkboxes and update selected indices for Zpevaci category
+# Calculate total initially selected songs for all categories
+total_selected = sum(len(indices) for indices in st.session_state.selected_indices.values())
+
+# Display checkboxes and update selected indices for given category
 for index, row in muziDF.iterrows():
     selected = index in st.session_state.selected_indices["Zpevaci"]
-    selected = st.checkbox(f"{row['Umelec']} - {row['Pisen']}", value=selected, key=f"checkbox_{index}")
+    disabled = False
+    if total_selected >= 25 and not selected:
+        disabled = True
+    selected = st.checkbox(f"{row['Umelec']} - {row['Pisen']}", value=selected, disabled=disabled, key=f"checkbox_{index}")
     if selected and index not in st.session_state.selected_indices["Zpevaci"]:
         st.session_state.selected_indices["Zpevaci"].append(index)
+        total_selected += 1  # Increment total selected count
     elif not selected and index in st.session_state.selected_indices["Zpevaci"]:
         st.session_state.selected_indices["Zpevaci"].remove(index)
-
-# Calculate total selected songs for all categories
-total_selected = sum(len(indices) for indices in st.session_state.selected_indices.values())
+        total_selected -= 1  # Decrement total selected count
 
 # Label for the progress bar
 progress_label = f"Celkem vybráno {total_selected} z 25 písní"

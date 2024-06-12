@@ -23,4 +23,3 @@ else:
         randomNumber = randint(1, 100)
         st.session_state.randomNumber = randomNumber
         st.switch_page("pages/1_České písně.py")
-        
