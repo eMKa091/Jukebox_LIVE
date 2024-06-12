@@ -47,10 +47,9 @@ ceskeDF = load_ceske_data(csvCeskePath)
 ############################
 # Dropdown navigation menu #
 ############################
-st.write("Další kategorie:")
 page = st.selectbox(
-    "Vyberte stránku",
-    ["České písně", "Duety", "Rock and roll", "Duety", "Zpěváci", "Zpěvačky", "Výsledky"],label_visibility="hidden"
+    "Další kategorie",
+    ["České písně", "Duety", "Rock and roll", "Duety", "Zpěváci", "Zpěvačky", "Výsledky"]
 )
 
 # Navigation based on the selection
@@ -72,8 +71,9 @@ elif page == "Výsledky":
     st.session_state.page = "pages/6_Výsledky.py"
     st.switch_page("pages/6_Výsledky.py")
 
+st.divider()
 st.info('Prosím vyberte písně (celkově maximálně 25 napříč všemi kategoriemi)')
-
+st.divider()
 # Display checkboxes and update selected indices for given category
 for index, row in ceskeDF.iterrows():
     selected = index in st.session_state.selected_indices["Ceske"]
