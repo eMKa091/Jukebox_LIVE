@@ -1,26 +1,38 @@
+# Import of needed packages and their aliases
 import streamlit as st
 import pandas as pd
 import os
 
+# General page configuration
 st.set_page_config(page_title='Muži')
 
-# Check if uniqueID is set
+############################
+# Check if uniqueID is set #
+############################
+# uniqueID is inherited from the main page (user input) through session state
+# Until uniqueID is not specifed, user gets nowhere
 if "uniqueID" not in st.session_state:
     st.warning("Prosím zadejte přezdívku na úvodní stránce!")
     st.stop()
 
 uniqueID = st.session_state.uniqueID
+randomizer = st.session_state.randomNumber
 
 st.info('Prosím vyberte písně (celkově maximálně 25 napříč všemi kategoriemi)')
 
-# Initialize global variables for each category
+#################################################
+# Initialize global variables for each category #
+#################################################
 if "selected_indices" not in st.session_state:
     st.session_state.selected_indices = {}
 
 if "Zpevaci" not in st.session_state.selected_indices:
     st.session_state.selected_indices["Zpevaci"] = []
 
-# Load data
+############################
+#   Source data handling   #
+############################
+# Data path
 csvMuziPath = "./dataSources/muzi.csv"
 
 @st.cache_data
@@ -30,6 +42,9 @@ def load_male_data(path):
 
 muziDF = load_male_data(csvMuziPath)
 
+############################
+#   User interface build   #
+############################
 # Display checkboxes and update selected indices for Zpevaci category
 for index, row in muziDF.iterrows():
     selected = index in st.session_state.selected_indices["Zpevaci"]
@@ -52,8 +67,8 @@ st.text(progress_label)
 
 # Button to send selected songs list
 if st.button("Uložit výběr z dané kategorie"):
-    # Use uniqueID to generate unique filename
-    file_name = f"selected_songs_zpevaci_{uniqueID}.txt"
+    # Use uniqueID and random number to generate unique filename
+    file_name = f"selected_songs_zpevaci_{uniqueID}-{randomizer}.txt"
     
     # Construct file path
     file_path = os.path.join("webpage_source", "vote_results", file_name)
