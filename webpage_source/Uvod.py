@@ -20,6 +20,8 @@ if 'uniqueID' in st.session_state:
         st.switch_page("pages/4_Zpěváci.py")
     if st.button("Pokračovat na ženské interprety"):
         st.switch_page("pages/5_Zpěvačky.py")
+    if st.button("Pokračovat na výsledky"):
+        st.switch_page("pages/6_Výsledky hlasování.py")
 
 ###############################################
 # Show initial screen if the session is fresh #
