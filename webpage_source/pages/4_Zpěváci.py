@@ -18,7 +18,7 @@ if "uniqueID" not in st.session_state:
 uniqueID = st.session_state.uniqueID
 randomizer = st.session_state.randomNumber
 
-st.info('Prosím vyberte písně (celkově maximálně 25 napříč všemi kategoriemi)')
+st.info('Prosím vyberte písně (celkově maximálně 10 napříč všemi kategoriemi)')
 
 #################################################
 # Initialize global variables for each category #
@@ -52,7 +52,7 @@ total_selected = sum(len(indices) for indices in st.session_state.selected_indic
 for index, row in muziDF.iterrows():
     selected = index in st.session_state.selected_indices["Zpevaci"]
     disabled = False
-    if total_selected >= 25 and not selected:
+    if total_selected >= 10 and not selected:
         disabled = True
     selected = st.checkbox(f"{row['Umelec']} - {row['Pisen']}", value=selected, disabled=disabled, key=f"checkbox_{index}")
     if selected and index not in st.session_state.selected_indices["Zpevaci"]:
@@ -63,10 +63,10 @@ for index, row in muziDF.iterrows():
         total_selected -= 1  # Decrement total selected count
 
 # Label for the progress bar
-progress_label = f"Celkem vybráno {total_selected} z 25 písní"
+progress_label = f"Celkem vybráno {total_selected} z 10 písní"
 
-# Progress bar with a target of 25 total songs
-progress = min(total_selected / 25, 1.0)
+# Progress bar with a target of 10 total songs
+progress = min(total_selected / 10, 1.0)
 st.progress(progress)
 st.text(progress_label)
 

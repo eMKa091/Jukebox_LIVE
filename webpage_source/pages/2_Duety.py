@@ -47,7 +47,7 @@ duetsDF = load_duets_data(csvDuetyPath)
 # Dropdown navigation menu #
 ############################
 st.divider()
-st.info('Prosím vyberte písně (celkově maximálně 25 napříč všemi kategoriemi)')
+st.info('Prosím vyberte písně (celkově maximálně 10 napříč všemi kategoriemi)')
 st.divider()
 
 # Calculate total initially selected songs for all categories
@@ -57,7 +57,7 @@ total_selected = sum(len(indices) for indices in st.session_state.selected_indic
 for index, row in duetsDF.iterrows():
     selected = index in st.session_state.selected_indices["Duety"]
     disabled = False
-    if total_selected >= 25 and not selected:
+    if total_selected >= 10 and not selected:
         disabled = True
     selected = st.checkbox(f"{row['Umelec']} - {row['Pisen']}", value=selected, disabled=disabled, key=f"checkbox_{index}")
     if selected and index not in st.session_state.selected_indices["Duety"]:
@@ -68,10 +68,10 @@ for index, row in duetsDF.iterrows():
         total_selected -= 1  # Decrement total selected count
 
 # Label for the progress bar
-progress_label = f"Celkem vybráno {total_selected} z 25 písní"
+progress_label = f"Celkem vybráno {total_selected} z 10 písní"
 
-# Progress bar with a target of 25 total songs
-progress = min(total_selected / 25, 1.0)
+# Progress bar with a target of 10 total songs
+progress = min(total_selected / 10, 1.0)
 st.progress(progress)
 st.text(progress_label)
 

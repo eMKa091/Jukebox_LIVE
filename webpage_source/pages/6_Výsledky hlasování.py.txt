@@ -26,15 +26,15 @@ for filename in os.listdir(results_dir):
 # Convert the Counter to a DataFrame for easier manipulation
 df_songs = pd.DataFrame(song_counter.items(), columns=["Píseň", "Počet hlasů"]).sort_values(by="Počet hlasů", ascending=False)
 
-# Limit to the top 25 most popular songs
-df_top_songs = df_songs.head(25)
+# Limit to the top 10 most popular songs
+df_top_songs = df_songs.head(10)
 
 # Reset the index and drop the old one
 df_top_songs.index = range(1, len(df_top_songs) + 1)
 
-# Display the top 25 songs in a clear table format
-st.subheader("Top 25 nejoblíbenějších písní")
-st.write("Níže je seznam top 25 písní podle počtu hlasů:")
+# Display the top 10 songs in a clear table format
+st.subheader("Top 10 nejoblíbenějších písní")
+st.write("Níže je seznam top 10 písní podle počtu hlasů:")
 
-# Display the table with top 25 songs without the index
+# Display the table with top 10 songs without the index
 st.table(df_top_songs)
