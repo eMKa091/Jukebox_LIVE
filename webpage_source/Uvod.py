@@ -13,8 +13,8 @@ if 'uniqueID' in st.session_state:
 # Show initial screen if the session is fresh #
 ###############################################
 else:
-    st.header('Dobrý den, vážení hosté!')
-    st.write('Zadejte prosím vaši přezdívku')
+    st.header('Dobrý den, vážený hoste!')
+    st.write('Zadej prosím svou přezdívku')
     uniqueID = st.text_input(label="Jmeno ci prezdivka", label_visibility='hidden')
 
     if uniqueID:
