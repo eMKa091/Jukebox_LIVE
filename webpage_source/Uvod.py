@@ -1,6 +1,9 @@
 import streamlit as st
 from random import randint
 
+# General page configuration
+st.set_page_config(page_title='Uvod', initial_sidebar_state="collapsed")
+
 ###################################################
 # Show welcome back page if user is known already #
 ###################################################
