@@ -72,6 +72,10 @@ progress_label = f"Celkem vybráno {total_selected} z 25 písní"
 progress = min(total_selected / 25, 1.0)
 st.progress(progress)
 st.text(progress_label)
+if total_selected == 25:
+    st.balloons
+    st.stop
+    st.success("Dekujeme za vas vyber")
 
 ##############################
 # Save the selection to file #
