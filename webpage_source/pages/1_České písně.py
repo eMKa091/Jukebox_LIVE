@@ -1,18 +1,16 @@
-# Import needed packages and their aliases
+# Import of needed packages and their aliases
 import streamlit as st
 import pandas as pd
-import importlib
 import os
-from streamlit_navigation_bar import st_navbar
 
 # General page configuration
-st.set_page_config(page_title="České písně", initial_sidebar_state="collapsed")
+st.set_page_config(page_title='České písně')
 
 ############################
 # Check if uniqueID is set #
 ############################
 # uniqueID is inherited from the main page (user input) through session state
-# Until uniqueID is not specified, user gets nowhere
+# Until uniqueID is not specifed, user gets nowhere
 if "uniqueID" not in st.session_state:
     st.warning("Prosím zadejte přezdívku na úvodní stránce!")
     st.stop()
@@ -46,22 +44,6 @@ ceskeDF = load_ceske_data(csvCeskePath)
 ############################
 #   User interface build   #
 ############################
-# Define the navigation options
-nav_options = ["Duety", "Rock and Roll"]
-
-# Create the navigation bar
-selected_page = st_navbar(nav_options)
-st.divider()
-
-# Load the selected page content using importlib
-if selected_page == "Duety":
-    duety_module = importlib.import_module('pages.2_Duety')
-    duety_module.duety()
-elif selected_page == "Rock and Roll":
-    rock_and_roll_module = importlib.import_module('pages.3_Rock and Roll')
-    rock_and_roll_module.RockAndRoll()
-
-
 st.divider()
 st.info('Prosím vyberte písně (celkově maximálně 25 napříč všemi kategoriemi)')
 st.divider()
