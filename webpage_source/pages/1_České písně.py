@@ -2,6 +2,7 @@
 import streamlit as st
 import pandas as pd
 import os
+from streamlit_modal import Modal  # Importing the modal package
 
 # General page configuration
 st.set_page_config(page_title='České písně')
@@ -74,7 +75,8 @@ st.progress(progress)
 st.text(progress_label)
 
 if total_selected == 10:
-    st.success("Dekujeme za vas vyber")
+    st.success("Děkujeme za váš výběr")
+
     # Use uniqueID and random number to generate unique filename
     file_name = f"selected_songs_ceske_{uniqueID}-{randomizer}.txt"
     
@@ -85,7 +87,21 @@ if total_selected == 10:
     with open(file_path, "w") as file:
         for index in st.session_state.selected_indices["Ceske"]:
             file.write(f"{ceskeDF.iloc[index]['Umelec']} - {ceskeDF.iloc[index]['Pisen']}\n")
-            
+    
+    # Show the modal for confirmation
+    modal = Modal("Potvrzení výběru", key="confirm_modal")
+    if modal.is_open():
+        with modal.container():
+            st.write("Opravdu chcete potvrdit váš výběr?")
+            if st.button("Ano"):
+                # Confirm and end the session
+                st.success("Vaše volba byla zaznamenána. Děkujeme!")
+                st.stop()
+            if st.button("Ne"):
+                modal.close()
+    
+    modal.open()
+
 ##############################
 # Save the selection to file #
 ##############################
