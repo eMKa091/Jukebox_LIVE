@@ -75,14 +75,10 @@ st.progress(progress)
 st.text(progress_label)
 
 if total_selected == 10:
-    st.success("Děkujeme za váš výběr")
-
     # Use uniqueID and random number to generate unique filename
     file_name = f"selected_songs_ceske_{uniqueID}-{randomizer}.txt"
-    
     # Construct file path
     file_path = os.path.join("webpage_source", "vote_results", file_name)
-    
     # Write selected songs to the file
     with open(file_path, "w") as file:
         for index in st.session_state.selected_indices["Ceske"]:
@@ -99,8 +95,7 @@ if total_selected == 10:
                 st.stop()
             if st.button("Ne"):
                 modal.close()
-    
-    modal.open()
+    #modal.open()
 
 ##############################
 # Save the selection to file #
