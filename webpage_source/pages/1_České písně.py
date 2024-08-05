@@ -74,11 +74,18 @@ st.progress(progress)
 st.text(progress_label)
 
 if total_selected == 10:
-    st.balloons()
     st.success("Dekujeme za vas vyber")
-    st.stop()
+    # Use uniqueID and random number to generate unique filename
+    file_name = f"selected_songs_ceske_{uniqueID}-{randomizer}.txt"
     
-
+    # Construct file path
+    file_path = os.path.join("webpage_source", "vote_results", file_name)
+    
+    # Write selected songs to the file
+    with open(file_path, "w") as file:
+        for index in st.session_state.selected_indices["Ceske"]:
+            file.write(f"{ceskeDF.iloc[index]['Umelec']} - {ceskeDF.iloc[index]['Pisen']}\n")
+            
 ##############################
 # Save the selection to file #
 ##############################
