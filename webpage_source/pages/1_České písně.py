@@ -91,18 +91,17 @@ if total_selected == 10 and not st.session_state.modal_shown:
     
     # Show the modal for confirmation
     modal = Modal("Potvrzení výběru", key="confirm_modal")
-    if modal.is_open():
-        with modal.container():
-            st.write("Opravdu chcete potvrdit váš výběr?")
-            if st.button("Ano"):
-                # Confirm and end the session
-                st.success("Vaše volba byla zaznamenána. Děkujeme!")
-                st.session_state.modal_shown = False  # Reset flag for future use
-                st.stop()
-            if st.button("Ne"):
-                st.session_state.modal_shown = False  # Reset the flag if the user cancels
-                modal.close()
     modal.open()
+    with modal.container():
+        st.write("Opravdu chcete potvrdit váš výběr?")
+        if st.button("Ano"):
+            # Confirm and end the session
+            st.success("Vaše volba byla zaznamenána. Děkujeme!")
+            st.session_state.modal_shown = False  # Reset flag for future use
+            st.stop()
+        if st.button("Ne"):
+            st.session_state.modal_shown = False  # Reset the flag if the user cancels
+            modal.close()
 
 ##############################
 # Save the selection to file #
