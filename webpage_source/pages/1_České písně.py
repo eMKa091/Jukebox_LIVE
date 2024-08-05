@@ -78,8 +78,6 @@ st.progress(progress)
 st.text(progress_label)
 
 if total_selected == 10 and not st.session_state.modal_shown:
-    st.session_state.modal_shown = True  # Set the flag to True to prevent the loop
-
     # Use uniqueID and random number to generate unique filename
     file_name = f"selected_songs_ceske_{uniqueID}-{randomizer}.txt"
     # Construct file path
@@ -92,6 +90,7 @@ if total_selected == 10 and not st.session_state.modal_shown:
     # Show the modal for confirmation
     modal = Modal("Potvrzení výběru", key="confirm_modal")
     if modal.is_open():
+        st.session_state.modal_shown = True  # Set the flag to True to prevent the loop
         with modal.container():
             st.write("Opravdu chcete potvrdit váš výběr?")
             if st.button("Ano"):
