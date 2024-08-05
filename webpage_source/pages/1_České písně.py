@@ -11,7 +11,7 @@ st.set_page_config(page_title='České písně')
 # Check if uniqueID is set #
 ############################
 # uniqueID is inherited from the main page (user input) through session state
-# Until uniqueID is not specifed, user gets nowhere
+# Until uniqueID is not specified, user gets nowhere
 if "uniqueID" not in st.session_state:
     st.warning("Prosím zadejte přezdívku na úvodní stránce!")
     st.stop()
@@ -27,6 +27,9 @@ if "selected_indices" not in st.session_state:
 
 if "Ceske" not in st.session_state.selected_indices:
     st.session_state.selected_indices["Ceske"] = []
+
+if "modal_shown" not in st.session_state:
+    st.session_state.modal_shown = False
 
 ############################
 #   Source data handling   #
@@ -74,7 +77,9 @@ progress = min(total_selected / 10, 1.0)
 st.progress(progress)
 st.text(progress_label)
 
-if total_selected == 10:
+if total_selected == 10 and not st.session_state.modal_shown:
+    st.session_state.modal_shown = True  # Set the flag to True to prevent the loop
+
     # Use uniqueID and random number to generate unique filename
     file_name = f"selected_songs_ceske_{uniqueID}-{randomizer}.txt"
     # Construct file path
@@ -94,8 +99,9 @@ if total_selected == 10:
                 st.success("Vaše volba byla zaznamenána. Děkujeme!")
                 st.stop()
             if st.button("Ne"):
+                st.session_state.modal_shown = False  # Reset the flag if the user cancels
                 modal.close()
-    #modal.open()
+    modal.open()
 
 ##############################
 # Save the selection to file #
