@@ -13,7 +13,7 @@ st.set_page_config(page_title='České písně')
 # uniqueID is inherited from the main page (user input) through session state
 # Until uniqueID is not specified, user gets nowhere
 if "uniqueID" not in st.session_state:
-    st.warning("Prosím zadejte přezdívku na úvodní stránce!")
+    st.warning("Aktuálně neprobíhá žádné hlasování")
     st.stop()
 
 uniqueID = st.session_state.uniqueID
