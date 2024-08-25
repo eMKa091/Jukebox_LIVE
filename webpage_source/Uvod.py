@@ -16,7 +16,8 @@ else:
     st.header('Dobrý den, vážený hoste!')
     
     st.subheader("Vítej v aplikaci Jukebox Heroes!")
-    st.write("Dnes máš jedinečnou možnost podílet se na tvorbě playlistu. Ty písně, které budou mít nejvíce hlasů, zařadíme do playlistu.")
+    st.write("Dnes máš jedinečnou možnost podílet se na tvorbě playlistu.") 
+    st.write("Ty písně, které budou mít nejvíce hlasů, zařadíme do playlistu.")
     
     st.write('Zadej prosím svou přezdívku')
     uniqueID = st.text_input(label="Jmeno ci prezdivka", label_visibility='hidden')
