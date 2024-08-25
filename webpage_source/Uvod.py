@@ -14,8 +14,11 @@ if 'uniqueID' in st.session_state:
 ###############################################
 else:
     st.header('Dobrý den, vážený hoste!')
+    
+    st.write("Vítej v aplikaci Jukebox Heroes.")
+    st.write("Dnes máš jedinečnou možnost podílet se na tvorbě playlistu. Ty písně, které budou mít nejvíce hlasů, zařadíme do playlistu.")
+    
     st.write('Zadej prosím svou přezdívku')
-    st.write("Vítejte v aplikaci Jukebox Heroes. Dnes máte jedinečnou možnost vybrat si až 10 písní. Ty, které budou mít nejvíce bodů, zařadíme do setlistu.")
     uniqueID = st.text_input(label="Jmeno ci prezdivka", label_visibility='hidden')
 
     if uniqueID:
