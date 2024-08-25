@@ -8,6 +8,7 @@ from random import randint
 if 'uniqueID' in st.session_state:
     st.success(f"Vítej zpět, {st.session_state.uniqueID}!")
     st.write("Tvou přezdívku už známe - hlasovat můžeš pouze jednou.")
+    st.write("Vítejte v aplikaci Jukebox Heroes. Dnes máte jedinečnou možnost vybrat si až 10 písní. Ty, které budou mít nejvíce bodů, zařadíme do setlistu.")
     
 ###############################################
 # Show initial screen if the session is fresh #
