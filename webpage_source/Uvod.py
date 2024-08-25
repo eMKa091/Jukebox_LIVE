@@ -19,6 +19,8 @@ else:
     st.write("Dnes máš jedinečnou možnost podílet se na tvorbě playlistu.") 
     st.write("Ty písně, které budou mít nejvíce hlasů, zařadíme do playlistu.")
     
+    st.divider()
+
     st.write('Zadej prosím svou přezdívku')
     uniqueID = st.text_input(label="Jmeno ci prezdivka", label_visibility='hidden')
 
