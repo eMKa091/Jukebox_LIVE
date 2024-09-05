@@ -24,7 +24,6 @@ def main_page():
     if 'uniqueID' in st.session_state:
         st.success(f"Vítej zpět, {st.session_state.uniqueID}!")
         st.write("Tvou přezdívku už známe - hlasovat můžeš pouze jednou.")
-        st.button("Pokračovat na hlasování", on_click=lambda: st.switch_page("Hlasování"))
 
     # Show the welcome screen for new users
     else:
@@ -43,10 +42,10 @@ def main_page():
             st.session_state.uniqueID = uniqueID
             st.session_state.randomNumber = randint(1, 100)
             st.success("Uloženo! Přesuneme vás na hlasování...")
-            st.rerun()  # Updated from experimental_rerun to rerun()
+            st.switch_page("Hlasování")
 
 # Check if the URL has the admin query parameter
-params = st.query_params  # Replaced experimental_get_query_params() with query_params()
+params = st.query_params
 if params.get("admin") == ["True"]:
     admin_page()
 else:
