@@ -48,7 +48,7 @@ songsDF = load_songs_data(csvSongsPath)
 #   User interface build   #
 ############################
 st.divider()
-st.info('Prosím vyberte písně (celkově maximálně 10 napříč všemi kategoriemi)')
+st.info('Vyber svých 10 nejvíce oblíbených songů!)')
 st.divider()
 
 # Calculate total initially selected songs for all categories
@@ -79,7 +79,7 @@ st.text(progress_label)
 ##############################
 # Save the selection to file #
 ##############################
-if st.button("Uložit výběr z dané kategorie"):
+if st.button("Odeslat výběr"):
     # Use uniqueID and random number to generate unique filename
     file_name = f"selected_songs_Songs_{uniqueID}-{randomizer}.txt"
     
@@ -92,4 +92,4 @@ if st.button("Uložit výběr z dané kategorie"):
             file.write(f"{songsDF.iloc[index]['Author']} - {songsDF.iloc[index]['Song']}\n")
     
     # Show success message
-    st.success("Výběr písní z dané kategorie byl uložen!")
+    st.success("Tvůj výběr byl uložen, děkujeme!")
