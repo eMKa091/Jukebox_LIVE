@@ -24,7 +24,7 @@ def reset_db():
     # Drop the table if it exists
     c.execute('DROP TABLE IF EXISTS votes')
 
-    # Recreate the table with the correct schema
+    # Recreate the table with the correct schema, including the 'date' column
     c.execute('''
         CREATE TABLE votes (
             uniqueID TEXT,
@@ -62,6 +62,17 @@ def admin_page():
     # Connect to the database
     conn = sqlite3.connect('votes.db')
     c = conn.cursor()
+
+    # Ensure the 'votes' table has the correct schema with the 'date' column
+    c.execute('PRAGMA table_info(votes)')
+    columns = [info[1] for info in c.fetchall()]
+    
+    if 'date' not in columns:
+        st.error("'date' column does not exist in the 'votes' table. Please reset the database.")
+        if st.button("Reset DB"):
+            reset_db()
+            st.success("Table was reset. Try voting again.")
+        return
 
     # Query to get votes per date
     query = '''
