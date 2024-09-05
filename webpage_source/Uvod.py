@@ -15,7 +15,8 @@ def admin_page():
 
     # Option to log out (removes admin query parameter)
     if st.button("Log Out"):
-        st.experimental_set_query_params()  # Remove query params
+        # Remove the "admin" query param to log out
+        st.experimental_set_query_params()  # Remove all query params
         st.success("Logged out of admin view. Refresh to return to the normal view.")
 
 # Function to show the main page for regular users
@@ -46,7 +47,9 @@ def main_page():
 
 # Check if the URL has the admin query parameter
 params = st.query_params
-if params.get("admin") == ["True"]:
+
+# Ensure the "admin" param is checked correctly and render the admin page
+if params.get("admin") and params.get("admin")[0] == "True":
     admin_page()
 else:
     main_page()
