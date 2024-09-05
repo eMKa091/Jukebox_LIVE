@@ -47,7 +47,7 @@ def main_page():
             st.switch_page("pages/Hlasování.py")  # Make sure the file name matches exactly
 
 # Get the query parameters using the new API
-params = st.query_params
+params = st.query_params.get()
 
 # Ensure the "admin" param is checked correctly and render the admin page
 if params("admin") == ["True"]:  # params.get returns a list, so check against ["True"]
