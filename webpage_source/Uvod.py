@@ -1,17 +1,23 @@
 import streamlit as st
+import pandas as pd
+import sqlite3
 from random import randint
+
 
 # Function to show the admin page
 def admin_page():
     st.title("Admin Wall")
     st.write("This is a restricted page for admin use only.")
     
-    # Admin-only functionality here
-    st.write("Display secret voting results or manage the app here.")
+    conn = sqlite3.connect('votes.db')
+    c = conn.cursor()
+    c.execute('SELECT uniqueID, song FROM votes')
+    results = c.fetchall()
+    conn.close()
+    
     st.write("**Voting Results:**")
-    st.write("1. Song A - 45 votes")
-    st.write("2. Song B - 30 votes")
-    st.write("3. Song C - 25 votes")
+    st.write(pd.DataFrame(results, columns=["User", "Song"]).groupby("User").apply(lambda x: x['Song'].tolist()).to_dict())
+
 
 # Function to show the main page for regular users
 def main_page():

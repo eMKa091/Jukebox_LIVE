@@ -2,6 +2,8 @@
 import streamlit as st
 import pandas as pd
 import os
+import sqlite3
+from random import randint
 
 # General page configuration
 st.set_page_config(page_title='Hlasovani')
@@ -17,6 +19,7 @@ if "uniqueID" not in st.session_state:
 
 uniqueID = st.session_state.uniqueID
 randomizer = st.session_state.randomNumber
+randomNumber = randint(1, 100)
 
 #################################################
 # Initialize global variables for each category #
@@ -43,6 +46,34 @@ def load_songs_data(path):
     return df
 
 songsDF = load_songs_data(csvSongsPath)
+
+######
+# DB #
+######
+# Function to initialize the database
+def init_db():
+    conn = sqlite3.connect('votes.db')
+    c = conn.cursor()
+    c.execute('''
+        CREATE TABLE IF NOT EXISTS votes (
+            uniqueID TEXT,
+            randomNumber INTEGER,
+            song TEXT
+        )
+    ''')
+    conn.commit()
+    conn.close()
+
+# Function to save votes to the database
+def save_vote(uniqueID, randomNumber, song):
+    conn = sqlite3.connect('votes.db')
+    c = conn.cursor()
+    c.execute('''
+        INSERT INTO votes (uniqueID, randomNumber, song)
+        VALUES (?, ?, ?)
+    ''', (uniqueID, randomNumber, song))
+    conn.commit()
+    conn.close()
 
 ############################
 #   User interface build   #
@@ -80,17 +111,11 @@ st.text(progress_label)
 # Save the selection to file #
 ##############################
 if st.button("Odeslat výběr"):
-    # Use uniqueID and random number to generate unique filename
-    file_name = f"selected_songs_{uniqueID}-{randomizer}.txt"
-    
-    # Construct file path
-    file_path = os.path.join("webpage_source", "vote_results", file_name)
-    
-    # Write selected songs to the file
-    with open(file_path, "w") as file:
-        for index in st.session_state.selected_indices["Songs"]:
-            file.write(f"{songsDF.iloc[index]['Author']} - {songsDF.iloc[index]['Song']}\n")
-    
-    # Show success message
+    conn = sqlite3.connect('votes.db')
+    c = conn.cursor()
+    for index in st.session_state.selected_indices["Songs"]:
+        song = f"{songsDF.iloc[index]['Author']} - {songsDF.iloc[index]['Song']}"
+        save_vote(uniqueID, randomNumber, song)
+    conn.close()
     st.success("Tvůj výběr byl uložen, děkujeme!")
     st.balloons()
