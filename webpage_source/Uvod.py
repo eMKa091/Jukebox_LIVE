@@ -1,8 +1,6 @@
 import streamlit as st
 import pandas as pd
 import sqlite3
-import matplotlib.pyplot as plt  # corrected import for matplotlib
-import seaborn as sns
 from random import randint
 from datetime import datetime
 
@@ -39,10 +37,7 @@ def reset_db():
     conn.commit()
     conn.close()
 
-# Initialize the database before querying or using it
-reset_db()  # Call reset_db to ensure the table schema is correct
-
-# Function to show the admin page
+# Function to show the admin page with top 10 most voted songs
 def admin_page():
     st.title("Admin Wall")
     st.write("This is a restricted page for admin use only.")
@@ -61,23 +56,22 @@ def admin_page():
     df = pd.read_sql_query(query, conn)
     conn.close()
 
-    # Aggregate top 3 songs per date
-    df = df.groupby('date').apply(lambda x: x.nlargest(3, 'vote_count')).reset_index(drop=True)
+    # Aggregate top 10 songs across all dates
+    df = df.groupby('date').apply(lambda x: x.nlargest(10, 'vote_count')).reset_index(drop=True)
 
-    # Plotting
-    st.write("**Top 3 Songs Per Day**")
+    # Display the top 10 songs
+    st.write("**Top 10 Songs Per Day**")
+    if not df.empty:
+        for date in df['date'].unique():
+            st.subheader(f"Date: {date}")
+            top_songs = df[df['date'] == date]
+            for i, row in enumerate(top_songs.itertuples(), 1):
+                st.write(f"{i}. {row.song} - {row.vote_count} votes")
+            st.divider()
+    else:
+        st.write("No votes have been recorded yet.")
 
-    # Create a plot
-    plt.figure(figsize=(12, 8))
-    sns.lineplot(data=df, x='date', y='vote_count', hue='song', marker='o')
-    plt.title('Top 3 Songs Per Day')
-    plt.xlabel('Date')
-    plt.ylabel('Number of Votes')
-    plt.xticks(rotation=45)
-    plt.tight_layout()
-
-    st.pyplot(plt)
-
+    # Buttons for clearing votes and resetting the database
     if st.button("Clear All Votes"):
         clear_votes()
         st.success("All votes have been cleared.")
