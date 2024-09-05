@@ -5,41 +5,30 @@ import matplotlib as plt
 import seaborn as sns
 from random import randint
 
+def clear_votes():
+    conn = sqlite3.connect('votes.db')
+    c = conn.cursor()
+    
+    # Delete all records from the votes table
+    c.execute('DELETE FROM votes')
+    
+    # Commit the changes and close the connection
+    conn.commit()
+    conn.close()
+
+# Call the clear_votes function to empty the table
+clear_votes()
+
 # Function to show the admin page
 def admin_page():
     st.title("Admin Wall")
     st.write("This is a restricted page for admin use only.")
 
-    # Connect to the database
-    conn = sqlite3.connect('votes.db')
-    c = conn.cursor()
 
-    # Query to get votes per date
-    query = '''
-    SELECT date, song, COUNT(song) as vote_count
-    FROM votes
-    GROUP BY date, song
-    ORDER BY date, vote_count DESC
-    '''
-    df = pd.read_sql_query(query, conn)
-    conn.close()
 
-    # Aggregate top 3 songs per date
-    df = df.groupby('date').apply(lambda x: x.nlargest(3, 'vote_count')).reset_index(drop=True)
-
-    # Plotting
-    st.write("**Top 3 Songs Per Day**")
-
-    # Create a plot
-    plt.figure(figsize=(12, 8))
-    sns.lineplot(data=df, x='date', y='vote_count', hue='song', marker='o')
-    plt.title('Top 3 Songs Per Day')
-    plt.xlabel('Date')
-    plt.ylabel('Number of Votes')
-    plt.xticks(rotation=45)
-    plt.tight_layout()
-
-    st.pyplot(plt)
+    if st.button("Clear All Votes"):
+        clear_votes()  # or reset_db()
+        st.success("All votes have been cleared.")
 
 
 # Function to show the main page for regular users
