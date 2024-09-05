@@ -80,6 +80,8 @@ def save_vote(uniqueID, randomNumber, song):
 st.divider()
 st.info('Vyber svých 10 nejvíce oblíbených songů!')
 st.divider()
+# Initialize the database
+init_db()
 
 # Calculate total initially selected songs for all categories
 total_selected = sum(len(indices) for indices in st.session_state.selected_indices.values())
