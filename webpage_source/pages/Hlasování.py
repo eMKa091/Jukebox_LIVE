@@ -3,6 +3,7 @@ import streamlit as st
 import pandas as pd
 import sqlite3
 from random import randint
+from datetime import datetime
 
 # General page configuration
 st.set_page_config(page_title='Hlasovani')
@@ -57,7 +58,8 @@ def init_db():
         CREATE TABLE IF NOT EXISTS votes (
             uniqueID TEXT,
             randomNumber INTEGER,
-            song TEXT
+            song TEXT,
+            date TEXT
         )
     ''')
     conn.commit()
@@ -67,10 +69,11 @@ def init_db():
 def save_vote(uniqueID, randomNumber, song):
     conn = sqlite3.connect('votes.db')
     c = conn.cursor()
+    date_today = datetime.now().strftime('%Y-%m-%d')  # Format as YYYY-MM-DD
     c.execute('''
-        INSERT INTO votes (uniqueID, randomNumber, song)
-        VALUES (?, ?, ?)
-    ''', (uniqueID, randomNumber, song))
+        INSERT INTO votes (uniqueID, randomNumber, song, date)
+        VALUES (?, ?, ?, ?)
+    ''', (uniqueID, randomNumber, song, date_today))
     conn.commit()
     conn.close()
 

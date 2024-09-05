@@ -1,22 +1,45 @@
 import streamlit as st
 import pandas as pd
 import sqlite3
+import matplotlib.pyplot as plt
+import seaborn as sns
 from random import randint
-
 
 # Function to show the admin page
 def admin_page():
     st.title("Admin Wall")
     st.write("This is a restricted page for admin use only.")
-    
+
+    # Connect to the database
     conn = sqlite3.connect('votes.db')
     c = conn.cursor()
-    c.execute('SELECT uniqueID, song FROM votes')
-    results = c.fetchall()
+
+    # Query to get votes per date
+    query = '''
+    SELECT date, song, COUNT(song) as vote_count
+    FROM votes
+    GROUP BY date, song
+    ORDER BY date, vote_count DESC
+    '''
+    df = pd.read_sql_query(query, conn)
     conn.close()
-    
-    st.write("**Voting Results:**")
-    st.write(pd.DataFrame(results, columns=["User", "Song"]).groupby("User").apply(lambda x: x['Song'].tolist()).to_dict())
+
+    # Aggregate top 3 songs per date
+    df = df.groupby('date').apply(lambda x: x.nlargest(3, 'vote_count')).reset_index(drop=True)
+
+    # Plotting
+    st.write("**Top 3 Songs Per Day**")
+
+    # Create a plot
+    plt.figure(figsize=(12, 8))
+    sns.lineplot(data=df, x='date', y='vote_count', hue='song', marker='o')
+    plt.title('Top 3 Songs Per Day')
+    plt.xlabel('Date')
+    plt.ylabel('Number of Votes')
+    plt.xticks(rotation=45)
+    plt.tight_layout()
+
+    st.pyplot(plt)
 
 
 # Function to show the main page for regular users
