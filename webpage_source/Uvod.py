@@ -42,7 +42,7 @@ def main_page():
             st.session_state.uniqueID = uniqueID
             st.session_state.randomNumber = randint(1, 100)
             st.success("Uloženo! Přesuneme vás na hlasování...")
-            st.switch_page("Hlasování")
+            st.switch_page("pages/Hlasování")
 
 # Check if the URL has the admin query parameter
 params = st.query_params
