@@ -18,50 +18,36 @@ def admin_page():
         st.experimental_set_query_params()  # Remove query params
         st.success("Logged out of admin view. Refresh to return to the normal view.")
 
-# Function to show the voting page
-def voting_page():
-    st.title("Hlasování")
-    st.write("Here, you can vote for your favorite songs.")
-    # Replace this with the actual voting logic from your Hlasování.py page
-
 # Function to show the main page for regular users
 def main_page():
-    ###################################################
-    # Show welcome back page if user is known already #
-    ###################################################
+    # Check if the user is already in the session state
     if 'uniqueID' in st.session_state:
         st.success(f"Vítej zpět, {st.session_state.uniqueID}!")
         st.write("Tvou přezdívku už známe - hlasovat můžeš pouze jednou.")
-        st.session_state.show_voting_page = True  # Trigger to show voting page
+        st.button("Pokračovat na hlasování", on_click=lambda: st.switch_page("Hlasování"))
 
-    ###############################################
-    # Show initial screen if the session is fresh #
-    ###############################################
+    # Show the welcome screen for new users
     else:
         st.header('Dobrý den, vážený hoste!')
         st.subheader("Vítej v aplikaci Jukebox Heroes!")
         st.write("Dnes máš jedinečnou možnost podílet se na tvorbě playlistu.")
         st.write("Ty písně, které budou mít nejvíce hlasů, zařadíme do playlistu.")
+        
         st.divider()
 
         st.write('Zadej prosím svou přezdívku')
-        uniqueID = st.text_input(label="Jmeno ci prezdivka", label_visibility='hidden')
+        uniqueID = st.text_input(label="Jméno či přezdívka", label_visibility='hidden')
 
+        # Once the user provides a name, store it and redirect to voting
         if uniqueID:
-            # Save the user's nickname and a random number into session state
             st.session_state.uniqueID = uniqueID
             st.session_state.randomNumber = randint(1, 100)
-            st.session_state.show_voting_page = True  # Trigger to show voting page
             st.success("Uloženo! Přesuneme vás na hlasování...")
+            st.experimental_rerun()  # This will reload and switch to the voting page
 
 # Check if the URL has the admin query parameter
 params = st.experimental_get_query_params()
-
 if params.get("admin") == ["True"]:
     admin_page()
 else:
-    # Navigate based on the session state
-    if st.session_state.get("show_voting_page", False):
-        voting_page()  # Display voting page (Hlasování)
-    else:
-        main_page()  # Display the main welcome page
+    main_page()
