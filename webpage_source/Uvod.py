@@ -50,7 +50,8 @@ def main_page():
 params = st.query_params.get
 
 # Ensure the "admin" param is checked correctly and render the admin page
-if params("admin") == ["True"]:  # params.get returns a list, so check against ["True"]
+#if params("admin") == ["True"]:  # params.get returns a list, so check against ["True"]
+if 'admin' in params:
     admin_page()
 else:
     main_page()
