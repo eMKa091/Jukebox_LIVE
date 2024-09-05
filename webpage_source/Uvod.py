@@ -52,8 +52,7 @@ def main_page():
             
             # Now redirect the user to the "Hlasovani" page
             st.success("Uloženo! Přesuneme vás na hlasování...")
-            st.session_state.runpage = "Hlasování"
-            st.session_state.runpage()
+            st.switch_page("pages/Hlasování.py")
 
 # Check if the URL has the admin query parameter
 params = st.experimental_get_query_params()
