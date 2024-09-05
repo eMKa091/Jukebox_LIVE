@@ -15,7 +15,7 @@ def admin_page():
 
     # Option to log out (removes admin query parameter)
     if st.button("Log Out"):
-        # Remove the "admin" query param to log out
+        # Use st.experimental_set_query_params() to clear params and log out
         st.experimental_set_query_params()  # Remove all query params
         st.success("Logged out of admin view. Refresh to return to the normal view.")
 
@@ -43,10 +43,11 @@ def main_page():
             st.session_state.uniqueID = uniqueID
             st.session_state.randomNumber = randint(1, 100)
             st.success("Uloženo! Přesuneme vás na hlasování...")
-            st.switch_page("pages/Hlasování.py")
+            st.experimental_set_query_params()  # Make sure to reset any query params here
+            st.switch_page("Hlasování")
 
-# Get the query parameters reliably
-params = st.experimental_get_query_params()
+# Get the query parameters using the updated API
+params = st.query_params
 
 # Ensure the "admin" param is checked correctly and render the admin page
 if params.get("admin") == ["True"]:
