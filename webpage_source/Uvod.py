@@ -46,7 +46,7 @@ def main_page():
             st.rerun()  # Updated from experimental_rerun to rerun()
 
 # Check if the URL has the admin query parameter
-params = st.query_params()  # Replaced experimental_get_query_params() with query_params()
+params = st.query_params  # Replaced experimental_get_query_params() with query_params()
 if params.get("admin") == ["True"]:
     admin_page()
 else:
