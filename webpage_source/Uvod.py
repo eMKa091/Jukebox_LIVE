@@ -37,6 +37,23 @@ def reset_db():
     conn.commit()
     conn.close()
 
+# Save vote function with date
+def save_vote(uniqueID, randomNumber, song):
+    conn = sqlite3.connect('votes.db')
+    c = conn.cursor()
+
+    # Add the current date in the format YYYY-MM-DD
+    date_today = datetime.now().strftime('%Y-%m-%d')
+    
+    # Insert vote with date
+    c.execute('''
+        INSERT INTO votes (uniqueID, randomNumber, song, date)
+        VALUES (?, ?, ?, ?)
+    ''', (uniqueID, randomNumber, song, date_today))
+    
+    conn.commit()
+    conn.close()
+
 # Function to show the admin page with top 10 most voted songs
 def admin_page():
     st.title("Admin Wall")
