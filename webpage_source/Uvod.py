@@ -52,7 +52,7 @@ def main_page():
             
             # Now redirect the user to the "Hlasovani" page
             st.success("Uloženo! Přesuneme vás na hlasování...")
-            st.experimental_set_query_params(page="Hlasovani")  # This will change the URL to /Hlasovani and show the voting page
+            st.experimental_set_query_params(page="Hlasování")  # This will change the URL to /Hlasovani and show the voting page
 
 # Check if the URL has the admin query parameter
 params = st.experimental_get_query_params()

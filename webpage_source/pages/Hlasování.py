@@ -4,7 +4,7 @@ import pandas as pd
 import os
 
 # General page configuration
-st.set_page_config(page_title='České písně')
+st.set_page_config(page_title='Hlasovani')
 
 ############################
 # Check if uniqueID is set #
