@@ -77,14 +77,29 @@ def save_vote(uniqueID, randomNumber, song):
     conn.commit()
     conn.close()
 
+def add_date_column():
+    conn = sqlite3.connect('votes.db')
+    c = conn.cursor()
+
+    # Add the date column to the table if it doesn't exist
+    c.execute("PRAGMA table_info(votes)")
+    columns = [info[1] for info in c.fetchall()]  # Fetch all column names
+    if 'date' not in columns:
+        c.execute('ALTER TABLE votes ADD COLUMN date TEXT')
+        conn.commit()
+
+    conn.close()
+
 ############################
 #   User interface build   #
 ############################
 st.divider()
 st.info('Vyber svých 10 nejvíce oblíbených songů!')
 st.divider()
+
 # Initialize the database
 init_db()
+add_date_column()
 
 # Calculate total initially selected songs for all categories
 total_selected = sum(len(indices) for indices in st.session_state.selected_indices.values())

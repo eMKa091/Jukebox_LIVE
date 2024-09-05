@@ -24,9 +24,8 @@ def admin_page():
 
 
     if st.button("Clear All Votes"):
-        clear_votes()  # or reset_db()
+        clear_votes()
         st.success("All votes have been cleared.")
-
 
 # Function to show the main page for regular users
 def main_page():
