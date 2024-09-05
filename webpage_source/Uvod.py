@@ -45,11 +45,11 @@ def main_page():
             st.success("Uloženo! Přesuneme vás na hlasování...")
             st.switch_page("pages/Hlasování.py")
 
-# Check if the URL has the admin query parameter
-params = st.query_params
+# Get the query parameters reliably
+params = st.experimental_get_query_params()
 
 # Ensure the "admin" param is checked correctly and render the admin page
-if params.get("admin") and params.get("admin")[0] == "True":
+if params.get("admin") == ["True"]:
     admin_page()
 else:
     main_page()
