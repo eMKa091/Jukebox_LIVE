@@ -50,18 +50,13 @@ def main_page():
             randomNumber = randint(1, 100)
             st.session_state.randomNumber = randomNumber
             
-            # Now redirect the user to the voting page
-            st.experimental_set_query_params(vote=True)
-            st.success("Uloženo! Přesuneme vás na další stránku...")
+            # Now redirect the user to the "Hlasovani" page
+            st.success("Uloženo! Přesuneme vás na hlasování...")
+            st.experimental_set_query_params(page="Hlasovani")  # This will change the URL to /Hlasovani and show the voting page
 
 # Check if the URL has the admin query parameter
 params = st.experimental_get_query_params()
 if params.get("admin") == ["True"]:
     admin_page()
 else:
-    # Check if vote page should be displayed
-    if params.get("vote") == ["True"]:
-        # This could be a redirect to another page or the voting functionality
-        st.write("Voting Page - You can cast your vote here.")
-    else:
-        main_page()
+    main_page()
