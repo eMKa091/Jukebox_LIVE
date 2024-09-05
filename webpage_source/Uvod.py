@@ -1,5 +1,6 @@
 import streamlit as st
 from random import randint
+from streamlit_extras.switch_page_button import switch_page
 
 # Function to show the admin page
 def admin_page():
@@ -52,7 +53,7 @@ def main_page():
             
             # Now redirect the user to the "Hlasovani" page
             st.success("Uloženo! Přesuneme vás na hlasování...")
-            st.experimental_set_query_params("Hlasování")  # This will change the URL to /Hlasovani and show the voting page
+            switch_page("Hlasování")  # This will change the URL to /Hlasovani and show the voting page
 
 # Check if the URL has the admin query parameter
 params = st.experimental_get_query_params()
