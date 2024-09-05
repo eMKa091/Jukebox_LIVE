@@ -1,7 +1,7 @@
 import streamlit as st
 import pandas as pd
 import sqlite3
-import matplotlib.pyplot as plt
+import matplotlib as plt
 import seaborn as sns
 from random import randint
 
