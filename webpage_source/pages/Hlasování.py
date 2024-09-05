@@ -81,7 +81,7 @@ st.text(progress_label)
 ##############################
 if st.button("Odeslat výběr"):
     # Use uniqueID and random number to generate unique filename
-    file_name = f"selected_songs_Songs_{uniqueID}-{randomizer}.txt"
+    file_name = f"selected_songs_{uniqueID}-{randomizer}.txt"
     
     # Construct file path
     file_path = os.path.join("webpage_source", "vote_results", file_name)
