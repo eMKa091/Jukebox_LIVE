@@ -24,8 +24,8 @@ randomizer = st.session_state.randomNumber
 if "selected_indices" not in st.session_state:
     st.session_state.selected_indices = {}
 
-if "Ceske" not in st.session_state.selected_indices:
-    st.session_state.selected_indices["Ceske"] = []
+if "Songs" not in st.session_state.selected_indices:
+    st.session_state.selected_indices["Songs"] = []
 
 if "modal_shown" not in st.session_state:
     st.session_state.modal_shown = False
@@ -34,15 +34,15 @@ if "modal_shown" not in st.session_state:
 #   Source data handling   #
 ############################
 # Data path
-csvCeskePath = "./dataSources/ceske.csv"
+csvSongsPath = "./dataSources/songList.csv"
 
 # Cache dataframe for better performance
 @st.cache_data
-def load_ceske_data(path):
+def load_songs_data(path):
     df = pd.read_csv(path)
     return df
 
-ceskeDF = load_ceske_data(csvCeskePath)
+songsDF = load_songs_data(csvSongsPath)
 
 ############################
 #   User interface build   #
@@ -55,17 +55,17 @@ st.divider()
 total_selected = sum(len(indices) for indices in st.session_state.selected_indices.values())
 
 # Display checkboxes and update selected indices for given category
-for index, row in ceskeDF.iterrows():
-    selected = index in st.session_state.selected_indices["Ceske"]
+for index, row in songsDF.iterrows():
+    selected = index in st.session_state.selected_indices["Songs"]
     disabled = False
     if total_selected >= 10 and not selected:
         disabled = True
-    selected = st.checkbox(f"{row['Umelec']} - {row['Pisen']}", value=selected, disabled=disabled, key=f"checkbox_{index}")
-    if selected and index not in st.session_state.selected_indices["Ceske"]:
-        st.session_state.selected_indices["Ceske"].append(index)
+    selected = st.checkbox(f"{row['Author']} - {row['Song']}", value=selected, disabled=disabled, key=f"checkbox_{index}")
+    if selected and index not in st.session_state.selected_indices["Songs"]:
+        st.session_state.selected_indices["Songs"].append(index)
         total_selected += 1  # Increment total selected count
-    elif not selected and index in st.session_state.selected_indices["Ceske"]:
-        st.session_state.selected_indices["Ceske"].remove(index)
+    elif not selected and index in st.session_state.selected_indices["Songs"]:
+        st.session_state.selected_indices["Songs"].remove(index)
         total_selected -= 1  # Decrement total selected count
 
 # Label for the progress bar below
@@ -81,15 +81,15 @@ st.text(progress_label)
 ##############################
 if st.button("Uložit výběr z dané kategorie"):
     # Use uniqueID and random number to generate unique filename
-    file_name = f"selected_songs_ceske_{uniqueID}-{randomizer}.txt"
+    file_name = f"selected_songs_Songs_{uniqueID}-{randomizer}.txt"
     
     # Construct file path
     file_path = os.path.join("webpage_source", "vote_results", file_name)
     
     # Write selected songs to the file
     with open(file_path, "w") as file:
-        for index in st.session_state.selected_indices["Ceske"]:
-            file.write(f"{ceskeDF.iloc[index]['Umelec']} - {ceskeDF.iloc[index]['Pisen']}\n")
+        for index in st.session_state.selected_indices["Songs"]:
+            file.write(f"{songsDF.iloc[index]['Author']} - {songsDF.iloc[index]['Song']}\n")
     
     # Show success message
     st.success("Výběr písní z dané kategorie byl uložen!")

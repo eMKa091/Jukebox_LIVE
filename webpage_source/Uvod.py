@@ -29,4 +29,4 @@ else:
         st.success("Uloženo! Přesuneme vás na další stránku...")
         randomNumber = randint(1, 100)
         st.session_state.randomNumber = randomNumber
-        st.switch_page("pages/1_České písně.py")
+        st.switch_page("pages/Hlasování.py")
