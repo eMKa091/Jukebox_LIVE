@@ -16,6 +16,26 @@ def clear_votes():
     conn.commit()
     conn.close()
 
+def reset_db():
+    conn = sqlite3.connect('votes.db')
+    c = conn.cursor()
+
+    # Drop the table if it exists
+    c.execute('DROP TABLE IF EXISTS votes')
+
+    # Recreate the table with the correct schema
+    c.execute('''
+        CREATE TABLE votes (
+            uniqueID TEXT,
+            randomNumber INTEGER,
+            song TEXT,
+            date TEXT
+        )
+    ''')
+    
+    conn.commit()
+    conn.close()
+
 # Function to show the admin page
 def admin_page():
     st.title("Admin Wall")
@@ -55,6 +75,10 @@ def admin_page():
     if st.button("Clear All Votes"):
         clear_votes()
         st.success("All votes have been cleared.")
+
+    if st.button("Reset DB"):
+        reset_db()
+        st.success("Table was reset.")
 
 # Function to show the main page for regular users
 def main_page():
