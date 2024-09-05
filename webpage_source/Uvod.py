@@ -1,10 +1,12 @@
 import streamlit as st
 import pandas as pd
 import sqlite3
-import matplotlib as plt
+import matplotlib.pyplot as plt  # corrected import for matplotlib
 import seaborn as sns
 from random import randint
+from datetime import datetime
 
+# Clear votes in the database
 def clear_votes():
     conn = sqlite3.connect('votes.db')
     c = conn.cursor()
@@ -16,6 +18,7 @@ def clear_votes():
     conn.commit()
     conn.close()
 
+# Reset the database by recreating the votes table with the correct schema
 def reset_db():
     conn = sqlite3.connect('votes.db')
     c = conn.cursor()
@@ -35,6 +38,9 @@ def reset_db():
     
     conn.commit()
     conn.close()
+
+# Initialize the database before querying or using it
+reset_db()  # Call reset_db to ensure the table schema is correct
 
 # Function to show the admin page
 def admin_page():
