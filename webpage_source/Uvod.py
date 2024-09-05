@@ -44,7 +44,7 @@ def main_page():
             st.session_state.randomNumber = randint(1, 100)
             st.success("Uloženo! Přesuneme vás na hlasování...")
             st.experimental_set_query_params()  # Clear any query params before switching pages
-            st.switch_page("pages/Hlasování.py")
+            st.switch_page("pages/Hlasování")
 
 # Get the query parameters using the new API
 params = st.experimental_get_query_params()
