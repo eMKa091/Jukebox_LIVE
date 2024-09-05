@@ -94,4 +94,3 @@ if st.button("Odeslat výběr"):
     # Show success message
     st.success("Tvůj výběr byl uložen, děkujeme!")
     st.balloons()
-    st.stop()
