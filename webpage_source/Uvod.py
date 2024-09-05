@@ -15,8 +15,7 @@ def admin_page():
 
     # Option to log out (removes admin query parameter)
     if st.button("Log Out"):
-        # Clear query parameters by setting an empty dict
-        st.set_query_params  # This removes all query params
+        st.experimental_set_query_params()  # Clear all query parameters
         st.success("Logged out of admin view. Refresh to return to the normal view.")
 
 # Function to show the main page for regular users
@@ -44,11 +43,11 @@ def main_page():
             st.session_state.uniqueID = uniqueID
             st.session_state.randomNumber = randint(1, 100)
             st.success("Uloženo! Přesuneme vás na hlasování...")
-            st.set_query_params  # Clear any query params before switching pages
+            st.experimental_set_query_params()  # Clear any query params before switching pages
             st.switch_page("Hlasování")
 
 # Get the query parameters using the new API
-params = st.query_params
+params = st.experimental_get_query_params()
 
 # Ensure the "admin" param is checked correctly and render the admin page
 if params.get("admin") == ["True"]:
