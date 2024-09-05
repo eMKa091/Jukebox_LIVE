@@ -15,11 +15,6 @@ def admin_page():
     st.write("2. Song B - 30 votes")
     st.write("3. Song C - 25 votes")
     
-    # Option to log out (removes admin query parameter)
-    if st.button("Log Out"):
-        st.experimental_set_query_params()  # This removes all query parameters
-        st.success("Logged out of admin view. Refresh to go back to normal view.")
-
 # Function to show the main page for regular users
 def main_page():
     ###################################################
