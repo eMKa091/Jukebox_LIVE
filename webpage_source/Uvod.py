@@ -16,9 +16,6 @@ def clear_votes():
     conn.commit()
     conn.close()
 
-# Call the clear_votes function to empty the table
-clear_votes()
-
 # Function to show the admin page
 def admin_page():
     st.title("Admin Wall")
