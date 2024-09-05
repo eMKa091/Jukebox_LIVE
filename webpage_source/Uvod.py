@@ -46,7 +46,7 @@ def main_page():
             st.experimental_rerun()  # This will reload and switch to the voting page
 
 # Check if the URL has the admin query parameter
-params = st.experimental_get_query_params()
+params = st.st.query_params()
 if params.get("admin") == ["True"]:
     admin_page()
 else:
