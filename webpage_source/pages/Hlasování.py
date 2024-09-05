@@ -48,7 +48,7 @@ songsDF = load_songs_data(csvSongsPath)
 #   User interface build   #
 ############################
 st.divider()
-st.info('Vyber svých 10 nejvíce oblíbených songů!)')
+st.info('Vyber svých 10 nejvíce oblíbených songů!')
 st.divider()
 
 # Calculate total initially selected songs for all categories
@@ -93,3 +93,5 @@ if st.button("Odeslat výběr"):
     
     # Show success message
     st.success("Tvůj výběr byl uložen, děkujeme!")
+    st.balloons()
+    st.stop()
