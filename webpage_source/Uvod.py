@@ -6,7 +6,9 @@ st.set_page_config(page_title="", page_icon="📞")
 st.header("Vážení hosté,")
 st.header("Aktuálně neprobíhá žádné hlasování.")
 
-st.subheader("Neváhejte nás kontaktovat:")
+st.divider()
+
+st.subheader("Neváhejte nás však kontaktovat:")
 
 # Displaying contact information
 st.write("📞 +420 608 462 008")
