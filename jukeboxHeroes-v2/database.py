@@ -1,4 +1,5 @@
 import sqlite3
+import streamlit as st
 from hashlib import sha256
 
 DATABASE = 'votes.db'
@@ -134,6 +135,18 @@ def create_event(name, date, round_count):
         VALUES (?, ?, ?)
     ''', (name, date, round_count))
     event_id = c.lastrowid
+
+    # Automatically assign all songs to the new event
+    c.execute('SELECT id FROM songs')  # Get all song IDs from the songs table
+    all_songs = c.fetchall()
+
+    for song in all_songs:
+        song_id = song[0]
+        c.execute('''
+            INSERT INTO event_songs (event_id, song_id)
+            VALUES (?, ?)
+        ''', (event_id, song_id))
+
     conn.commit()
     conn.close()
     return event_id
@@ -150,13 +163,13 @@ def create_round(event_id, round_number, description):
     conn.close()
 
 # Function to store a vote
-def store_vote(user_id, song, event_id, round_id, date):
+def store_vote(uniqueID, randomNumber, song, event_id, round_id, date):
     conn = sqlite3.connect(DATABASE)
     c = conn.cursor()
     c.execute('''
-        INSERT INTO votes (user_id, song, event_id, round_id, date) 
-        VALUES (?, ?, ?, ?, ?)
-    ''', (user_id, song, event_id, round_id, date))
+        INSERT INTO votes (uniqueID, randomNumber, song, event_id, round_id, date)
+        VALUES (?, ?, ?, ?, ?, ?)
+    ''', (uniqueID, randomNumber, song, event_id, round_id, date))
     conn.commit()
     conn.close()
 
@@ -262,17 +275,68 @@ def delete_event(event_id):
     conn = sqlite3.connect(DATABASE)
     c = conn.cursor()
 
-    # Delete from event_songs (songs associated with the event)
-    c.execute('DELETE FROM event_songs WHERE event_id = ?', (event_id,))
-    
-    # Delete from votes (votes associated with the event)
-    c.execute('DELETE FROM votes WHERE event_id = ?', (event_id,))
-    
-    # Finally, delete the event itself
-    c.execute('DELETE FROM events WHERE id = ?', (event_id,))
+    try:
+        st.write(f"Attempting to delete event with ID: {event_id}")
+        
+        # Check if the event exists in the votes table
+        c.execute('SELECT * FROM votes WHERE event_id = ?', (event_id,))
+        votes_for_event = c.fetchall()
+        st.write(f"Votes for event: {votes_for_event}")
+        
+        # Check if the event exists in the event_songs table
+        c.execute('SELECT * FROM event_songs WHERE event_id = ?', (event_id,))
+        songs_for_event = c.fetchall()
+        st.write(f"Songs for event: {songs_for_event}")
+        
+        # Delete songs associated with the event
+        c.execute('DELETE FROM event_songs WHERE event_id = ?', (event_id,))
+        st.write("Deleted songs from event_songs")
 
-    conn.commit()
+        # Delete votes associated with the event
+        c.execute('DELETE FROM votes WHERE event_id = ?', (event_id,))
+        st.write("Deleted votes from votes")
+
+        # Finally, delete the event itself
+        c.execute('DELETE FROM events WHERE id = ?', (event_id,))
+        st.write(f"Deleted event {event_id} from events table")
+
+        conn.commit()
+        st.success(f"Event {event_id} and all related data have been deleted.")
+    except sqlite3.OperationalError as e:
+        st.error(f"Error deleting event {event_id}: {e}")
+    finally:
+        conn.close()
+
+def check_table_schema():
+    conn = sqlite3.connect(DATABASE)
+    c = conn.cursor()
+
+    # Check schema for the votes table
+    c.execute("PRAGMA table_info(votes)")
+    votes_schema = c.fetchall()
+    st.write("Votes Table Schema:")
+    for column in votes_schema:
+        st.write(column)
+
+    # Check schema for the event_songs table
+    c.execute("PRAGMA table_info(event_songs)")
+    event_songs_schema = c.fetchall()
+    st.write("Event Songs Table Schema:")
+    for column in event_songs_schema:
+        st.write(column)
+
     conn.close()
+
+def get_event_name(event_id):
+    """
+    Fetch the event name based on the event_id.
+    """
+    conn = sqlite3.connect(DATABASE)
+    c = conn.cursor()
+    c.execute('SELECT name FROM events WHERE id = ?', (event_id,))
+    event_name = c.fetchone()
+    conn.close()
+    return event_name[0] if event_name else "Unknown Event"
 
 # Initialize the database when this module is run
 if __name__ == "__main__":

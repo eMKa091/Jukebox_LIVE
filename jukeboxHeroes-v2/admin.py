@@ -4,7 +4,7 @@ import hashlib
 import pandas as pd
 from database import (
     fetch_admin_user, add_song, get_songs_for_event, assign_song_to_event,
-    remove_song_from_event, create_event, delete_event, reset_database
+    remove_song_from_event, create_event, delete_event, check_table_schema, get_event_name
 )
 
 # Hashing function for security
@@ -37,9 +37,9 @@ def admin_login():
         else:
             st.error("Invalid username or password")
 
-#####################################
+##############################
 # EVENT MANAGEMENT FUNCTIONS #
-#####################################
+##############################
 def event_management():
     st.subheader("Event Management")
 
@@ -73,7 +73,7 @@ def event_management():
         if st.button(f"Delete Event {event[1]}", key=f"delete_{event[0]}"):
             delete_event(event[0])
             st.success(f"Event '{event[1]}' and all related data have been deleted.")
-            st.experimental_rerun()  # Refresh the page to update event list
+            st.rerun()  # Refresh the page to update event list
 
     # Dropdown to select event for managing songs
     event_id = st.selectbox("Select Event for Song Management", options=[(event[0], event[1]) for event in events], format_func=lambda x: x[1])
@@ -102,7 +102,8 @@ def upload_songs_csv():
             st.error(f"Error processing the file: {e}")
 
 def song_management(event_id):
-    st.subheader("Song Management")
+    event_name = get_event_name(event_id)
+    st.subheader(f"Song Management for {event_name}")
 
     # Split layout for master song list and event-specific songs
     col1, col2 = st.columns(2)
@@ -111,14 +112,18 @@ def song_management(event_id):
     # Master Song List (Adding) #
     #############################
     with col1:
-        st.write("**Available Songs**")
         conn = sqlite3.connect('votes.db')
         df_master = pd.read_sql_query("SELECT * FROM songs", conn)
         conn.close()
 
         # Display the master song list and allow adding songs to the event
         if not df_master.empty:
-            selected_songs = st.multiselect("Select songs to add to the event:", options=df_master['id'].tolist(), format_func=lambda x: f"{df_master[df_master['id'] == x]['title'].values[0]} by {df_master[df_master['id'] == x]['artist'].values[0]}")
+            selected_songs = st.multiselect(
+                "Select songs to add to the event:", 
+                options=df_master['id'].tolist(), 
+                format_func=lambda x: f"{df_master[df_master['id'] == x]['title'].values[0]} by {df_master[df_master['id'] == x]['artist'].values[0]}",
+                key="add_songs_multiselect"  # Unique key for adding songs
+            )
             if st.button("Add Songs to Event"):
                 for song_id in selected_songs:
                     assign_song_to_event(event_id, song_id)
@@ -130,7 +135,7 @@ def song_management(event_id):
     # Event Song List (Removing) #
     #############################
     with col2:
-        st.write(f"**Songs in Event {event_id}**")
+        st.write(f"**Songs in {event_name}**")
         current_songs = get_songs_for_event(event_id)
 
         if current_songs:
@@ -139,7 +144,12 @@ def song_management(event_id):
 
             # Display the table with checkboxes
             st.write("Select songs to remove:")
-            selected_to_remove = st.multiselect("Remove from event:", options=df_event['id'].tolist(), format_func=lambda x: f"{df_event[df_event['id'] == x]['title'].values[0]} by {df_event[df_event['id'] == x]['artist'].values[0]}")
+            selected_to_remove = st.multiselect(
+                "Remove from event:", 
+                options=df_event['id'].tolist(), 
+                format_func=lambda x: f"{df_event[df_event['id'] == x]['title'].values[0]} by {df_event[df_event['id'] == x]['artist'].values[0]}",
+                key="remove_songs_multiselect"  # Unique key for removing songs
+            )
 
             # Remove the selected songs when the button is clicked
             if st.button("Remove Selected Songs"):
@@ -147,7 +157,7 @@ def song_management(event_id):
                     remove_song_from_event(event_id, song_id)
                 st.success(f"Removed {len(selected_to_remove)} songs from the event.")
         else:
-            st.info("No songs assigned to this event yet.")
+            st.info(f"No songs assigned to {event_name} yet.")
 
 #############################
 # DATABASE BACKUP FUNCTIONS #
@@ -165,12 +175,21 @@ def export_votes_to_csv():
 # Export songs to CSV
 def export_songs_to_csv():
     conn = sqlite3.connect('votes.db')
-    df_songs = pd.read_sql_query("SELECT * FROM songs", conn)
+    
+    # Fetch songs only from the songs table to avoid duplications
+    df_songs = pd.read_sql_query("SELECT DISTINCT * FROM songs", conn)
     conn.close()
     
     # Convert DataFrame to CSV and provide download link
     csv = df_songs.to_csv(index=False)
     st.download_button("Download Songs CSV", data=csv, file_name="songs_backup.csv", mime="text/csv")
+
+###################
+# DB HEALTH CHECK #
+###################
+# Add a button to trigger schema check
+if st.button("Check Database Schema"):
+    check_table_schema()
 
 ##########
 # Backup #
@@ -186,9 +205,9 @@ def backup_data_section():
 if 'logged_in' in st.session_state and st.session_state['logged_in']:
     st.title("Admin Dashboard")
 
-    ######################
-    # Manage Events #
-    ######################
+    #################
+    # CREATE EVENTS #
+    #################
     event_id = event_management()
 
     # If event_id is None, skip song management
