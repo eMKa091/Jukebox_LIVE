@@ -4,7 +4,7 @@ import hashlib
 import pandas as pd
 from database import (
     fetch_admin_user, add_song, get_songs_for_event, assign_song_to_event,
-    remove_song_from_event, create_event, delete_event, check_table_schema, get_event_name
+    remove_song_from_event, create_event, delete_event, get_event_name
 )
 
 # Hashing function for security
@@ -41,7 +41,7 @@ def admin_login():
 # EVENT MANAGEMENT FUNCTIONS #
 ##############################
 def event_management():
-    st.subheader("Event Management")
+    st.subheader("Create new event")
 
     # Create a new event
     with st.form(key='create_event_form'):
@@ -69,12 +69,12 @@ def event_management():
 
     # Show events in a table with delete buttons
     for event in events:
-        st.write(f"**Event Name**: {event[1]}")
         if st.button(f"Delete Event {event[1]}", key=f"delete_{event[0]}"):
             delete_event(event[0])
             st.success(f"Event '{event[1]}' and all related data have been deleted.")
             st.rerun()  # Refresh the page to update event list
 
+    st.divider()
     # Dropdown to select event for managing songs
     event_id = st.selectbox("Select Event for Song Management", options=[(event[0], event[1]) for event in events], format_func=lambda x: x[1])
     
@@ -85,7 +85,8 @@ def event_management():
 # SONG MANAGEMENT FUNCTIONS #
 #############################
 def upload_songs_csv():
-    st.subheader("Upload Song List (CSV)")
+    st.divider()
+    st.subheader("Upload new song list (CSV)")
 
     # CSV Upload
     uploaded_file = st.file_uploader("Choose a CSV file", type="csv")
@@ -103,7 +104,8 @@ def upload_songs_csv():
 
 def song_management(event_id):
     event_name = get_event_name(event_id)
-    st.subheader(f"Song Management for {event_name}")
+    st.divider()
+    st.subheader(f"Song management for venue: {event_name}")
 
     # Split layout for master song list and event-specific songs
     col1, col2 = st.columns(2)
@@ -118,8 +120,9 @@ def song_management(event_id):
 
         # Display the master song list and allow adding songs to the event
         if not df_master.empty:
+            st.write("Select songs to add:")
             selected_songs = st.multiselect(
-                "Select songs to add to the event:", 
+                "Add to event:", 
                 options=df_master['id'].tolist(), 
                 format_func=lambda x: f"{df_master[df_master['id'] == x]['title'].values[0]} by {df_master[df_master['id'] == x]['artist'].values[0]}",
                 key="add_songs_multiselect"  # Unique key for adding songs
@@ -135,7 +138,6 @@ def song_management(event_id):
     # Event Song List (Removing) #
     #############################
     with col2:
-        st.write(f"**Songs in {event_name}**")
         current_songs = get_songs_for_event(event_id)
 
         if current_songs:
@@ -184,18 +186,12 @@ def export_songs_to_csv():
     csv = df_songs.to_csv(index=False)
     st.download_button("Download Songs CSV", data=csv, file_name="songs_backup.csv", mime="text/csv")
 
-###################
-# DB HEALTH CHECK #
-###################
-# Add a button to trigger schema check
-if st.button("Check Database Schema"):
-    check_table_schema()
-
 ##########
 # Backup #
 ##########
 def backup_data_section():
-    st.subheader("Data Backup")
+    st.divider()
+    st.subheader("Data backup")
     export_votes_to_csv()
     export_songs_to_csv()
 
@@ -204,7 +200,7 @@ def backup_data_section():
 ###########################################
 if 'logged_in' in st.session_state and st.session_state['logged_in']:
     st.title("Admin Dashboard")
-
+    st.divider()
     #################
     # CREATE EVENTS #
     #################
@@ -215,8 +211,8 @@ if 'logged_in' in st.session_state and st.session_state['logged_in']:
         ###################
         # SONG MANAGEMENT #
         ###################
-        upload_songs_csv()  # Upload new songs
         song_management(event_id)  # Manage songs for the selected event
+        upload_songs_csv()  # Upload new songs
 
     ##########
     # BACKUP #
