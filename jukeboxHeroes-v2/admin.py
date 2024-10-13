@@ -3,8 +3,8 @@ import sqlite3
 import hashlib
 import pandas as pd
 from database import (
-    fetch_admin_user, add_song, get_songs_for_event, update_song, assign_song_to_event,
-    create_event, fetch_votes
+    fetch_admin_user, add_song, get_songs_for_event, assign_song_to_event,
+    remove_song_from_event, create_event, delete_event, reset_database
 )
 
 # Hashing function for security
@@ -41,7 +41,7 @@ def admin_login():
 # EVENT MANAGEMENT FUNCTIONS #
 #####################################
 def event_management():
-    st.subheader("Create event")
+    st.subheader("Event Management")
 
     # Create a new event
     with st.form(key='create_event_form'):
@@ -67,39 +67,87 @@ def event_management():
         st.warning("No events found. Please create an event before proceeding.")
         return None
 
+    # Show events in a table with delete buttons
+    for event in events:
+        st.write(f"**Event Name**: {event[1]}")
+        if st.button(f"Delete Event {event[1]}", key=f"delete_{event[0]}"):
+            delete_event(event[0])
+            st.success(f"Event '{event[1]}' and all related data have been deleted.")
+            st.experimental_rerun()  # Refresh the page to update event list
+
     # Dropdown to select event for managing songs
     event_id = st.selectbox("Select Event for Song Management", options=[(event[0], event[1]) for event in events], format_func=lambda x: x[1])
     
     # Return selected event ID
     return event_id[0]  # Returning the event_id to use in song management
 
-############################
-# SONG MANAGEMENT FUNCTION #
-############################
+#############################
+# SONG MANAGEMENT FUNCTIONS #
+#############################
+def upload_songs_csv():
+    st.subheader("Upload Song List (CSV)")
+
+    # CSV Upload
+    uploaded_file = st.file_uploader("Choose a CSV file", type="csv")
+    if uploaded_file is not None:
+        try:
+            df = pd.read_csv(uploaded_file)
+            if 'Author' in df.columns and 'Song' in df.columns:
+                for _, row in df.iterrows():
+                    add_song(row['Song'], row['Author'])  # 'Song' is title, 'Author' is artist
+                st.success(f"Uploaded {len(df)} songs successfully.")
+            else:
+                st.error("CSV must have 'Author' and 'Song' columns.")
+        except Exception as e:
+            st.error(f"Error processing the file: {e}")
+
 def song_management(event_id):
     st.subheader("Song Management")
 
-    # Display current song list for the event
-    current_songs = get_songs_for_event(event_id)
-    
-    st.write("Current Songs for this Event:")
-    for song in current_songs:
-        with st.expander(f"{song[1]} - {song[2]}"):
-            new_title = st.text_input(f"Edit title for '{song[1]}'", value=song[1])
-            new_artist = st.text_input(f"Edit artist for '{song[2]}'", value=song[2])
-            if st.button(f"Update Song {song[1]}"):
-                update_song(song[0], new_title, new_artist)  # song[0] is the song ID
-                st.success(f"Song '{new_title}' updated successfully!")
+    # Split layout for master song list and event-specific songs
+    col1, col2 = st.columns(2)
 
-    # Add new songs
-    st.subheader("Add a New Song")
-    new_song_title = st.text_input("Song Title")
-    new_song_artist = st.text_input("Artist")
-    if st.button("Add Song"):
-        song_id = add_song(new_song_title, new_song_artist)
-        assign_song_to_event(event_id, song_id)  # Assign this song to the current event
-        st.success(f"Added '{new_song_title}' to event setlist")
+    #############################
+    # Master Song List (Adding) #
+    #############################
+    with col1:
+        st.write("**Available Songs**")
+        conn = sqlite3.connect('votes.db')
+        df_master = pd.read_sql_query("SELECT * FROM songs", conn)
+        conn.close()
 
+        # Display the master song list and allow adding songs to the event
+        if not df_master.empty:
+            selected_songs = st.multiselect("Select songs to add to the event:", options=df_master['id'].tolist(), format_func=lambda x: f"{df_master[df_master['id'] == x]['title'].values[0]} by {df_master[df_master['id'] == x]['artist'].values[0]}")
+            if st.button("Add Songs to Event"):
+                for song_id in selected_songs:
+                    assign_song_to_event(event_id, song_id)
+                st.success(f"Added {len(selected_songs)} songs to the event.")
+        else:
+            st.info("No songs available. Please upload a song list.")
+
+    #############################
+    # Event Song List (Removing) #
+    #############################
+    with col2:
+        st.write(f"**Songs in Event {event_id}**")
+        current_songs = get_songs_for_event(event_id)
+
+        if current_songs:
+            # Display the current songs in a table with checkboxes
+            df_event = pd.DataFrame(current_songs, columns=['id', 'title', 'artist'])
+
+            # Display the table with checkboxes
+            st.write("Select songs to remove:")
+            selected_to_remove = st.multiselect("Remove from event:", options=df_event['id'].tolist(), format_func=lambda x: f"{df_event[df_event['id'] == x]['title'].values[0]} by {df_event[df_event['id'] == x]['artist'].values[0]}")
+
+            # Remove the selected songs when the button is clicked
+            if st.button("Remove Selected Songs"):
+                for song_id in selected_to_remove:
+                    remove_song_from_event(event_id, song_id)
+                st.success(f"Removed {len(selected_to_remove)} songs from the event.")
+        else:
+            st.info("No songs assigned to this event yet.")
 
 #############################
 # DATABASE BACKUP FUNCTIONS #
@@ -124,7 +172,6 @@ def export_songs_to_csv():
     csv = df_songs.to_csv(index=False)
     st.download_button("Download Songs CSV", data=csv, file_name="songs_backup.csv", mime="text/csv")
 
-
 ##########
 # Backup #
 ##########
@@ -133,28 +180,29 @@ def backup_data_section():
     export_votes_to_csv()
     export_songs_to_csv()
 
-
 ###########################################
 # MAIN ADMIN DASHBOARD AND NAVIGATION #
 ###########################################
 if 'logged_in' in st.session_state and st.session_state['logged_in']:
     st.title("Admin Dashboard")
 
-    #################
-    # CREATE EVENTS #
-    #################
+    ######################
+    # Manage Events #
+    ######################
     event_id = event_management()
 
-    ###################
-    # SONG MANAGEMENT #
-    ###################
-    song_management(event_id)
+    # If event_id is None, skip song management
+    if event_id:
+        ###################
+        # SONG MANAGEMENT #
+        ###################
+        upload_songs_csv()  # Upload new songs
+        song_management(event_id)  # Manage songs for the selected event
 
     ##########
     # BACKUP #
     ##########
     backup_data_section()
 
-    # The rest of the admin functionalities (Voting Control) will go here
 else:
     admin_login()

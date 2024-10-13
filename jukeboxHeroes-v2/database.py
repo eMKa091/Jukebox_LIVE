@@ -243,6 +243,37 @@ def update_song(song_id, title, artist):
     conn.commit()
     conn.close()
 
+def remove_song_from_event(event_id, song_id):
+    """
+    Completely removes a song from the event by deleting the entry from the event_songs table.
+    """
+    conn = sqlite3.connect(DATABASE)
+    c = conn.cursor()
+    c.execute('''
+        DELETE FROM event_songs WHERE event_id = ? AND song_id = ?
+    ''', (event_id, song_id))
+    conn.commit()
+    conn.close()
+
+def delete_event(event_id):
+    """
+    Deletes an event from the database and all related entries (event_songs, votes).
+    """
+    conn = sqlite3.connect(DATABASE)
+    c = conn.cursor()
+
+    # Delete from event_songs (songs associated with the event)
+    c.execute('DELETE FROM event_songs WHERE event_id = ?', (event_id,))
+    
+    # Delete from votes (votes associated with the event)
+    c.execute('DELETE FROM votes WHERE event_id = ?', (event_id,))
+    
+    # Finally, delete the event itself
+    c.execute('DELETE FROM events WHERE id = ?', (event_id,))
+
+    conn.commit()
+    conn.close()
+
 # Initialize the database when this module is run
 if __name__ == "__main__":
     init_db()
