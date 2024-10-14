@@ -338,6 +338,47 @@ def get_event_name(event_id):
     conn.close()
     return event_name[0] if event_name else "Unknown Event"
 
+def add_voting_state_to_events():
+    """
+    Adds the voting_active and current_round columns to the events table.
+    """
+    conn = sqlite3.connect(DATABASE)
+    c = conn.cursor()
+
+    # Check if the columns already exist
+    c.execute("PRAGMA table_info(events)")
+    columns = [info[1] for info in c.fetchall()]
+
+    if 'voting_active' not in columns:
+        # Add voting_active and current_round columns to the events table
+        c.execute('ALTER TABLE events ADD COLUMN voting_active BOOLEAN DEFAULT 0')
+        c.execute('ALTER TABLE events ADD COLUMN current_round INTEGER DEFAULT 1')
+        conn.commit()
+        print("Added voting_active and current_round to events table.")
+
+    conn.close()
+
+def update_voting_state(event_id, voting_active, current_round=None):
+    """
+    Updates the voting state (voting_active) and optionally the current round for multi-round events.
+    """
+    conn = sqlite3.connect(DATABASE)
+    c = conn.cursor()
+
+    if current_round:
+        # Update both voting_active and current_round for multi-round events
+        c.execute('''
+            UPDATE events SET voting_active = ?, current_round = ? WHERE id = ?
+        ''', (voting_active, current_round, event_id))
+    else:
+        # Update only the voting_active state for single-round events
+        c.execute('''
+            UPDATE events SET voting_active = ? WHERE id = ?
+        ''', (voting_active, event_id))
+
+    conn.commit()
+    conn.close()
+
 # Initialize the database when this module is run
 if __name__ == "__main__":
     init_db()

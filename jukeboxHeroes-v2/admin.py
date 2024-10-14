@@ -4,8 +4,13 @@ import hashlib
 import pandas as pd
 from database import (
     fetch_admin_user, add_song, get_songs_for_event, assign_song_to_event,
-    remove_song_from_event, create_event, delete_event, get_event_name
+    remove_song_from_event, create_event, delete_event, get_event_name, add_voting_state_to_events, update_voting_state
 )
+
+DATABASE = 'votes.db'
+
+# Need to place this better 
+add_voting_state_to_events()
 
 # Hashing function for security
 def hash_password(password):
@@ -195,6 +200,89 @@ def backup_data_section():
     export_votes_to_csv()
     export_songs_to_csv()
 
+def voting_control(event_id, round_count):
+    st.divider()
+    st.subheader("Voting Control")
+
+    # Check if this is a multi-round event
+    if round_count > 1:
+        st.write(f"**Multi-round event with {round_count} rounds**")
+        manage_rounds(event_id, round_count)
+    else:
+        st.write("**Single-round event**")
+        manage_single_round(event_id)
+
+#############################
+# Single-Round Voting Logic #
+#############################
+def manage_single_round(event_id):
+    conn = sqlite3.connect(DATABASE)
+    c = conn.cursor()
+
+    # Fetch the current voting state from the database
+    c.execute('SELECT voting_active FROM events WHERE id = ?', (event_id,))
+    voting_active = c.fetchone()[0]
+    conn.close()
+
+    # Display current voting status
+    if voting_active:
+        st.success("Voting is currently active.")
+        if st.button("Stop Voting"):
+            update_voting_state(event_id, False)
+            st.write("Voting stopped. Displaying splash screen.")
+            display_splash_screen()
+    else:
+        st.warning("Voting is currently stopped.")
+        if st.button("Start Voting"):
+            update_voting_state(event_id, True)
+            st.success("Voting started!")
+
+############################
+# Multi-Round Voting Logic #
+############################
+def manage_rounds(event_id, round_count):
+    conn = sqlite3.connect(DATABASE)
+    c = conn.cursor()
+
+    # Fetch the current round and voting state from the database
+    c.execute('SELECT voting_active, current_round FROM events WHERE id = ?', (event_id,))
+    voting_active, current_round = c.fetchone()
+    conn.close()
+
+    if current_round > round_count:
+        st.write("All rounds are completed.")
+        display_splash_screen(f"All voting rounds completed. Enjoy the show!")
+        return
+
+    # Display current round info
+    st.write(f"**Current Round: {current_round}/{round_count}**")
+
+    # Voting control for the current round
+    if voting_active:
+        st.success(f"Voting for Round {current_round} is active.")
+        if st.button("Stop Voting"):
+            update_voting_state(event_id, False, current_round + 1)
+            st.write(f"Voting for Round {current_round} stopped.")
+            display_splash_screen(f"Voting for Round {current_round} has ended. Enjoy the first set!")
+    else:
+        st.warning(f"Voting for Round {current_round} is currently stopped.")
+        if st.button(f"Start Voting for Round {current_round}"):
+            update_voting_state(event_id, True)
+            st.success(f"Voting for Round {current_round} started!")
+
+############################
+# Splash Screen Display    #
+############################
+def display_splash_screen(message="No ongoing voting."):
+    st.divider()
+    st.header("Vážení hosté,")
+    st.header(message)
+    st.divider()
+    st.subheader("Neváhejte nás však kontaktovat:")
+    st.write("📞 +420 608 462 008")
+    st.write("✉️ [rudyhorvat77@gmail.com](mailto:rudyhorvat77@gmail.com)")
+    st.divider()
+
 ###########################################
 # MAIN ADMIN DASHBOARD AND NAVIGATION #
 ###########################################
@@ -208,6 +296,18 @@ if 'logged_in' in st.session_state and st.session_state['logged_in']:
 
     # If event_id is None, skip song management
     if event_id:
+        # Fetch the number of rounds for the selected event
+        conn = sqlite3.connect('votes.db')
+        c = conn.cursor()
+        c.execute('SELECT round_count FROM events WHERE id = ?', (event_id,))
+        round_count = c.fetchone()[0]
+        conn.close()
+
+        #####################
+        # VOTING MANAGEMENT #
+        #####################
+        voting_control(event_id, round_count)
+
         ###################
         # SONG MANAGEMENT #
         ###################
