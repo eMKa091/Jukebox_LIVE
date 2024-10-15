@@ -4,13 +4,14 @@ import hashlib
 import pandas as pd
 from database import (
     fetch_admin_user, add_song, get_songs_for_event, assign_song_to_event,
-    remove_song_from_event, create_event, delete_event, get_event_name, add_voting_state_to_events, update_voting_state, init_db
+    remove_song_from_event, create_event, delete_event, get_event_name, 
+    add_voting_state_to_events, update_voting_state, init_db, start_voting, stop_voting
 )
 
 DATABASE = 'votes.db'
 init_db()
 
-# Need to place this better 
+# Initialize voting state in the database (if not yet added)
 add_voting_state_to_events()
 
 # Hashing function for security
@@ -62,7 +63,7 @@ def event_management():
             st.success(f"Event '{new_event_name}' created with ID {event_id}")
 
     # Fetch and display events dynamically
-    conn = sqlite3.connect('votes.db')
+    conn = sqlite3.connect(DATABASE)
     c = conn.cursor()
     c.execute('SELECT id, name FROM events')
     events = c.fetchall()
@@ -120,7 +121,7 @@ def song_management(event_id):
     # Master Song List (Adding) #
     #############################
     with col1:
-        conn = sqlite3.connect('votes.db')
+        conn = sqlite3.connect(DATABASE)
         df_master = pd.read_sql_query("SELECT * FROM songs", conn)
         conn.close()
 
@@ -172,7 +173,7 @@ def song_management(event_id):
 #############################
 # Export votes to CSV
 def export_votes_to_csv():
-    conn = sqlite3.connect('votes.db')
+    conn = sqlite3.connect(DATABASE)
     df_votes = pd.read_sql_query("SELECT * FROM votes", conn)
     conn.close()
     
@@ -182,7 +183,7 @@ def export_votes_to_csv():
 
 # Export songs to CSV
 def export_songs_to_csv():
-    conn = sqlite3.connect('votes.db')
+    conn = sqlite3.connect(DATABASE)
     
     # Fetch songs only from the songs table to avoid duplications
     df_songs = pd.read_sql_query("SELECT DISTINCT * FROM songs", conn)
@@ -236,6 +237,7 @@ def manage_single_round(event_id):
         st.warning("Voting is currently stopped.")
         if st.button("Start Voting"):
             update_voting_state(event_id, True)
+            st.session_state['active_event_id'] = event_id  # Store event ID for the voting page
             st.success("Voting started!")
 
 ############################
@@ -269,6 +271,7 @@ def manage_rounds(event_id, round_count):
         st.warning(f"Voting for Round {current_round} is currently stopped.")
         if st.button(f"Start Voting for Round {current_round}"):
             update_voting_state(event_id, True)
+            st.session_state['active_event_id'] = event_id  # Store event ID for the voting page
             st.success(f"Voting for Round {current_round} started!")
 
 ############################
@@ -291,6 +294,7 @@ def admin_page():
     if 'logged_in' in st.session_state and st.session_state['logged_in']:
         st.title("Admin Dashboard")
         st.divider()
+        
         #################
         # CREATE EVENTS #
         #################
@@ -299,7 +303,7 @@ def admin_page():
         # If event_id is None, skip song management
         if event_id:
             # Fetch the number of rounds for the selected event
-            conn = sqlite3.connect('votes.db')
+            conn = sqlite3.connect(DATABASE)
             c = conn.cursor()
             c.execute('SELECT round_count FROM events WHERE id = ?', (event_id,))
             round_count = c.fetchone()[0]
@@ -328,4 +332,5 @@ def admin_page():
 
     else:
         admin_login()
+
 admin_page()

@@ -379,6 +379,35 @@ def update_voting_state(event_id, voting_active, current_round=None):
     conn.commit()
     conn.close()
 
+def start_voting(event_id):
+    conn = sqlite3.connect(DATABASE)
+    c = conn.cursor()
+
+    # First, deactivate voting for all other events
+    c.execute('''
+        UPDATE events SET voting_active = 0 WHERE id != ?
+    ''', (event_id,))
+
+    # Then, activate voting for the specified event
+    c.execute('''
+        UPDATE events SET voting_active = 1 WHERE id = ?
+    ''', (event_id,))
+
+    conn.commit()
+    conn.close()
+
+def stop_voting(event_id):
+    conn = sqlite3.connect(DATABASE)
+    c = conn.cursor()
+
+    # Deactivate voting for the specified event
+    c.execute('''
+        UPDATE events SET voting_active = 0 WHERE id = ?
+    ''', (event_id,))
+
+    conn.commit()
+    conn.close()
+
 # Initialize the database when this module is run
 if __name__ == "__main__":
     init_db()
