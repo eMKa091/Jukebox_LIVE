@@ -83,6 +83,10 @@ def user_identification():
 # Voting Page Logic #
 #####################
 def voting_page():
+    # Add a button to navigate back to the admin page
+    if st.button("Go to Admin Page"):
+        st.session_state['page'] = 'admin'
+        st.rerun()
     # Retrieve the event_id from session state or default to a valid one
     event_id = st.session_state.get("active_event_id", 1)
 
@@ -147,4 +151,4 @@ if __name__ == "__main__":
     if 'active_event_id' not in st.session_state:
         st.session_state['active_event_id'] = 1  # Set a default event ID for now
 
-    voting_page()
+voting_page()

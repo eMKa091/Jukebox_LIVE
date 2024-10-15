@@ -4,10 +4,11 @@ import hashlib
 import pandas as pd
 from database import (
     fetch_admin_user, add_song, get_songs_for_event, assign_song_to_event,
-    remove_song_from_event, create_event, delete_event, get_event_name, add_voting_state_to_events, update_voting_state
+    remove_song_from_event, create_event, delete_event, get_event_name, add_voting_state_to_events, update_voting_state, init_db
 )
 
 DATABASE = 'votes.db'
+init_db()
 
 # Need to place this better 
 add_voting_state_to_events()
@@ -286,38 +287,45 @@ def display_splash_screen(message="No ongoing voting."):
 ###########################################
 # MAIN ADMIN DASHBOARD AND NAVIGATION #
 ###########################################
-if 'logged_in' in st.session_state and st.session_state['logged_in']:
-    st.title("Admin Dashboard")
-    st.divider()
-    #################
-    # CREATE EVENTS #
-    #################
-    event_id = event_management()
+def admin_page():
+    if 'logged_in' in st.session_state and st.session_state['logged_in']:
+        st.title("Admin Dashboard")
+        st.divider()
+        #################
+        # CREATE EVENTS #
+        #################
+        event_id = event_management()
 
-    # If event_id is None, skip song management
-    if event_id:
-        # Fetch the number of rounds for the selected event
-        conn = sqlite3.connect('votes.db')
-        c = conn.cursor()
-        c.execute('SELECT round_count FROM events WHERE id = ?', (event_id,))
-        round_count = c.fetchone()[0]
-        conn.close()
+        # If event_id is None, skip song management
+        if event_id:
+            # Fetch the number of rounds for the selected event
+            conn = sqlite3.connect('votes.db')
+            c = conn.cursor()
+            c.execute('SELECT round_count FROM events WHERE id = ?', (event_id,))
+            round_count = c.fetchone()[0]
+            conn.close()
 
-        #####################
-        # VOTING MANAGEMENT #
-        #####################
-        voting_control(event_id, round_count)
+            #####################
+            # VOTING MANAGEMENT #
+            #####################
+            voting_control(event_id, round_count)
 
-        ###################
-        # SONG MANAGEMENT #
-        ###################
-        song_management(event_id)  # Manage songs for the selected event
-        upload_songs_csv()  # Upload new songs
+            ###################
+            # SONG MANAGEMENT #
+            ###################
+            song_management(event_id)  # Manage songs for the selected event
+            upload_songs_csv()  # Upload new songs
 
-    ##########
-    # BACKUP #
-    ##########
-    backup_data_section()
+        ##########
+        # BACKUP #
+        ##########
+        backup_data_section()
 
-else:
-    admin_login()
+        # Add a button to navigate to the voting page
+        if st.button("Go to Voting Page"):
+            st.session_state['page'] = 'voting'
+            st.rerun()
+
+    else:
+        admin_login()
+admin_page()
