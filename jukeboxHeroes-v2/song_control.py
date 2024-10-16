@@ -116,20 +116,73 @@ def fetch_songs_for_voting(event_id, current_round=None):
     c = conn.cursor()
 
     if current_round:
-        c.execute('''
+        # Fetch songs for the current round in multi-round events
+        query = '''
             SELECT songs.id, songs.title, songs.artist
             FROM songs
             JOIN event_songs ON songs.id = event_songs.song_id
             WHERE event_songs.event_id = ? AND event_songs.round_id = ?
-        ''', (event_id, current_round))
+        '''
+        c.execute(query, (event_id, current_round))
     else:
-        c.execute('''
+        # Fetch all songs for single-round events
+        query = '''
             SELECT songs.id, songs.title, songs.artist
             FROM songs
             JOIN event_songs ON songs.id = event_songs.song_id
             WHERE event_songs.event_id = ?
-        ''', (event_id,))
+        '''
+        c.execute(query, (event_id,))
     
     songs = c.fetchall()
     conn.close()
+
+    # Debug: Log fetched songs
+    st.write(f"Event ID: {event_id}, Current Round: {current_round}")
+    st.write(f"Fetched songs: {songs}")
+    
     return songs
+
+def display_song_selection(songs, max_selection=5):
+    """
+    Displays song selection checkboxes with a maximum selection limit of 5 songs.
+    """
+    if 'selected_songs' not in st.session_state:
+        st.session_state['selected_songs'] = []
+
+    selected_songs = st.session_state['selected_songs']
+    num_selected = len(selected_songs)
+
+    # Display the current number of selected songs
+    st.subheader(f"Select up to {max_selection} songs:")
+    st.markdown(f"**{num_selected} / {max_selection} selected**")
+
+    # Display checkboxes for song selection
+    cols = st.columns(2)  # Responsive layout for mobile
+    for i, (song_id, song_title, song_artist) in enumerate(songs):
+        checked = song_id in selected_songs
+        disabled = (not checked and num_selected >= max_selection)  # Disable extra selections
+
+        with cols[i % 2]:  # Distribute songs across 2 columns
+            if st.checkbox(f"{song_title} by {song_artist}", key=f"song_{song_id}", value=checked, disabled=disabled):
+                if not checked:
+                    selected_songs.append(song_id)
+            else:
+                if checked:
+                    selected_songs.remove(song_id)
+
+        # Update session state
+        st.session_state['selected_songs'] = selected_songs
+        num_selected = len(selected_songs)
+
+    # Once 5 songs are selected, move to the confirmation stage
+    if num_selected == max_selection:
+        st.session_state['confirming_selection'] = True  # Set the confirmation state
+
+def get_song_name(song_id):
+    conn = sqlite3.connect(DATABASE)
+    c = conn.cursor()
+    c.execute('SELECT title FROM songs WHERE id = ?', (song_id,))
+    result = c.fetchone()
+    conn.close()
+    return result[0] if result else 'Unknown Song'
