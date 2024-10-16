@@ -220,13 +220,10 @@ def add_song(title, artist):
     return song_id
 
 # Function to assign a song to an event (event_songs table)
-def assign_song_to_event(event_id, song_id):
+def assign_song_to_event(event_id, song_id, round_id=None):
     conn = sqlite3.connect(DATABASE)
     c = conn.cursor()
-    c.execute('''
-        INSERT INTO event_songs (event_id, song_id)
-        VALUES (?, ?)
-    ''', (event_id, song_id))
+    c.execute('INSERT INTO event_songs (event_id, song_id, round_id) VALUES (?, ?, ?)', (event_id, song_id, round_id))
     conn.commit()
     conn.close()
 
