@@ -358,17 +358,27 @@ def add_voting_state_to_events():
 def update_voting_state(event_id, voting_active, current_round=None):
     """
     Updates the voting state (voting_active) and optionally the current round for multi-round events.
+    Ensures only one event is active at any given time and provides a message if an active event is stopped.
     """
     conn = sqlite3.connect(DATABASE)
     c = conn.cursor()
 
+    # Check if any other event is currently active
+    c.execute('SELECT id, name FROM events WHERE voting_active = 1 AND id != ?', (event_id,))
+    other_active_event = c.fetchone()
+
+    if voting_active and other_active_event:
+        # Stop any other active event
+        other_event_id, other_event_name = other_active_event
+        c.execute('UPDATE events SET voting_active = 0 WHERE id = ?', (other_event_id,))
+        st.warning(f"Voting for '{other_event_name}' was stopped as you started voting for another event.")
+
+    # Update the voting state for the current event
     if current_round:
-        # Update both voting_active and current_round for multi-round events
         c.execute('''
             UPDATE events SET voting_active = ?, current_round = ? WHERE id = ?
         ''', (voting_active, current_round, event_id))
     else:
-        # Update only the voting_active state for single-round events
         c.execute('''
             UPDATE events SET voting_active = ? WHERE id = ?
         ''', (voting_active, event_id))
@@ -382,7 +392,7 @@ def start_voting(event_id):
 
     # First, deactivate voting for all other events
     c.execute('''
-        UPDATE events SET voting_active = 0 WHERE id != ?
+        UPDATE events SET voting_active = 0 WHERE voting_active = 1
     ''', (event_id,))
 
     # Then, activate voting for the specified event

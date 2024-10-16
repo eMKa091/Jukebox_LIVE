@@ -36,7 +36,7 @@ def voting_page():
         display_splash_screen("Aktuálně neprobíhá žádné hlasování.")
         return
 
-    event_id, round_count, current_round = event
+    event_id, event_name, round_count, voting_active, current_round = event
 
     st.title(f"Vote for your favorite songs")
 

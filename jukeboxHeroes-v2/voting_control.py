@@ -20,13 +20,13 @@ def manage_single_round(event_id):
     if voting_active:
         st.success("Voting is currently active.")
         if st.button("Stop Voting"):
-            update_voting_state(event_id, False)
+            update_voting_state(event_id, False)  # Stop voting for this event
             st.write("Voting stopped.")
             st.rerun()
     else:
         st.warning("Voting is currently stopped.")
         if st.button("Start Voting"):
-            update_voting_state(event_id, True)
+            update_voting_state(event_id, True)  # Start voting, stop all other active events
             st.success("Voting started!")
             st.session_state['active_event_id'] = event_id  # Store event ID for the voting page
             st.rerun()
@@ -55,13 +55,13 @@ def manage_rounds(event_id, round_count):
     if voting_active:
         st.success(f"Voting for Round {current_round} is active.")
         if st.button("Stop Voting"):
-            update_voting_state(event_id, False, current_round + 1)
+            update_voting_state(event_id, False, current_round + 1)  # Stop current round voting
             st.write(f"Voting for Round {current_round} stopped.")
             st.rerun()
     else:
         st.warning(f"Voting for Round {current_round} is currently stopped.")
         if st.button(f"Start Voting for Round {current_round}"):
-            update_voting_state(event_id, True)
+            update_voting_state(event_id, True, current_round)  # Start voting, stop all other active events
             st.session_state['active_event_id'] = event_id
             st.success(f"Voting for Round {current_round} started!")
             st.rerun()
@@ -105,8 +105,8 @@ def submit_votes(user_name, event_id, round_id, selected_songs):
         ''', (user_name, song_id, event_id, round_id))
         vote_exists = c.fetchone()[0]
 
+        # Insert the vote only if it doesn't already exist
         if not vote_exists:
-            # Insert the vote into the database if the user hasn't voted for the song
             c.execute('''
                 INSERT INTO votes (user_id, song, event_id, round_id, date)
                 VALUES (?, ?, ?, ?, DATE('now'))
