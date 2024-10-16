@@ -1,6 +1,6 @@
 import sqlite3
 import streamlit as st
-from database import update_voting_state, stop_voting
+from database import update_voting_state
 
 DATABASE = 'votes.db'
 
@@ -90,3 +90,27 @@ def display_splash_screen(message="No ongoing voting."):
     st.write("📞 +420 608 462 008")
     st.write("✉️ [rudyhorvat77@gmail.com](mailto:rudyhorvat77@gmail.com)")
     st.divider()
+
+################################
+# Submit votes to the database #
+################################
+def submit_votes(user_name, event_id, round_id, selected_songs):
+    conn = sqlite3.connect(DATABASE)
+    c = conn.cursor()
+
+    for song_id in selected_songs:
+        # Check if the user has already voted for this song in this round
+        c.execute('''
+            SELECT COUNT(*) FROM votes WHERE user_id = ? AND song = ? AND event_id = ? AND round_id = ?
+        ''', (user_name, song_id, event_id, round_id))
+        vote_exists = c.fetchone()[0]
+
+        if not vote_exists:
+            # Insert the vote into the database if the user hasn't voted for the song
+            c.execute('''
+                INSERT INTO votes (user_id, song, event_id, round_id, date)
+                VALUES (?, ?, ?, ?, DATE('now'))
+            ''', (user_name, song_id, event_id, round_id))
+
+    conn.commit()
+    conn.close()

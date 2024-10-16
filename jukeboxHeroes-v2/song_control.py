@@ -109,3 +109,27 @@ def export_songs_to_csv():
     # Convert DataFrame to CSV and provide download link
     csv = df_songs.to_csv(index=False)
     st.download_button("Download Songs CSV", data=csv, file_name="songs_backup.csv", mime="text/csv")
+
+# Function to fetch songs for voting
+def fetch_songs_for_voting(event_id, current_round=None):
+    conn = sqlite3.connect(DATABASE)
+    c = conn.cursor()
+
+    if current_round:
+        c.execute('''
+            SELECT songs.id, songs.title, songs.artist
+            FROM songs
+            JOIN event_songs ON songs.id = event_songs.song_id
+            WHERE event_songs.event_id = ? AND event_songs.round_id = ?
+        ''', (event_id, current_round))
+    else:
+        c.execute('''
+            SELECT songs.id, songs.title, songs.artist
+            FROM songs
+            JOIN event_songs ON songs.id = event_songs.song_id
+            WHERE event_songs.event_id = ?
+        ''', (event_id,))
+    
+    songs = c.fetchall()
+    conn.close()
+    return songs

@@ -1,3 +1,5 @@
+from voting_control import (display_splash_screen, submit_votes)
+from song_control import fetch_songs_for_voting
 import streamlit as st
 import sqlite3
 
@@ -21,62 +23,12 @@ def get_event_details(event_id):
     conn.close()
     return event if event else None
 
-# Function to fetch songs for voting
-def fetch_songs_for_voting(event_id, current_round=None):
-    conn = sqlite3.connect(DATABASE)
-    c = conn.cursor()
-
-    if current_round:
-        c.execute('''
-            SELECT songs.id, songs.title, songs.artist
-            FROM songs
-            JOIN event_songs ON songs.id = event_songs.song_id
-            WHERE event_songs.event_id = ? AND event_songs.round_id = ?
-        ''', (event_id, current_round))
-    else:
-        c.execute('''
-            SELECT songs.id, songs.title, songs.artist
-            FROM songs
-            JOIN event_songs ON songs.id = event_songs.song_id
-            WHERE event_songs.event_id = ?
-        ''', (event_id,))
-    
-    songs = c.fetchall()
-    conn.close()
-    return songs
-
-# Function to submit votes to the database
-def submit_votes(user_name, event_id, round_id, selected_songs):
-    conn = sqlite3.connect(DATABASE)
-    c = conn.cursor()
-
-    for song_id in selected_songs:
-        # Check if the user has already voted for this song in this round
-        c.execute('''
-            SELECT COUNT(*) FROM votes WHERE user_id = ? AND song = ? AND event_id = ? AND round_id = ?
-        ''', (user_name, song_id, event_id, round_id))
-        vote_exists = c.fetchone()[0]
-
-        if not vote_exists:
-            # Insert the vote into the database if the user hasn't voted for the song
-            c.execute('''
-                INSERT INTO votes (user_id, song, event_id, round_id, date)
-                VALUES (?, ?, ?, ?, DATE('now'))
-            ''', (user_name, song_id, event_id, round_id))
-
-    conn.commit()
-    conn.close()
-
-# Splash screen for inactive voting
-def display_splash_screen(message="No ongoing voting."):
-    st.header("Vážení hosté,")
-    st.subheader(message)
-    st.write("📞 +420 608 462 008")
-    st.write("✉️ [rudyhorvat77@gmail.com](mailto:rudyhorvat77@gmail.com)")
-    st.divider()
-
 # Voting page logic
 def voting_page():
+    if st.button(label="Admin page"):
+        st.session_state['page'] = 'admin'
+        st.rerun()
+
     # Fetch active event
     event = get_active_event()
 
@@ -84,21 +36,15 @@ def voting_page():
         display_splash_screen("Aktuálně neprobíhá žádné hlasování.")
         return
 
-    event_id, event_name, round_count, voting_active, current_round = event
+    event_id, round_count, current_round = event
 
-    st.title(f"Vote for Your Favorite Songs - {event_name}")
+    st.title(f"Vote for your favorite songs")
 
     # User identification
-    user_name = st.text_input("Enter your name to vote")
+    user_name = st.text_input("First, enter your name to vote")
 
     if not user_name:
         st.warning("Please enter your name to vote.")
-        return
-
-    # Check if voting is active
-    if not voting_active:
-        st.warning("Voting is not active right now.")
-        display_splash_screen("Aktuálně neprobíhá žádné hlasování.")
         return
 
     # Fetch the songs for voting (considering rounds if it's a multi-round event)
@@ -126,7 +72,7 @@ def voting_page():
             submit_votes(user_name, event_id, current_round, selected_songs)
             st.success(f"Thank you, {user_name}! You have successfully submitted your vote for {len(selected_songs)} songs.")
         else:
-            st.warning("Please select at least one song to submit your vote.")
+            st.warning("Please select at least one song to submit your vote")
 
 # Main page
 if __name__ == "__main__":
