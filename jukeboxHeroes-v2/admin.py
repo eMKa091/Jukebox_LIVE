@@ -1,6 +1,6 @@
 import streamlit as st
 import sqlite3
-from database import (create_event, delete_event,add_voting_state_to_events, init_db)
+from database import (create_event, delete_event, add_voting_state_to_events, init_db)
 from voting_control import *
 from login_control import *
 from song_control import *
@@ -62,6 +62,8 @@ def event_management():
     event_id = event_selection[0]  # Return the event ID, not the name
     return event_id
 
+DATABASE = 'votes.db'
+
 ###################
 # MAIN ADMIN PAGE #
 ###################
@@ -79,8 +81,17 @@ def admin_page():
             conn = sqlite3.connect(DATABASE)
             c = conn.cursor()
             c.execute('SELECT round_count FROM events WHERE id = ?', (event_id,))
-            round_count = c.fetchone()[0]
+            round_count = c.fetchone()[0]  # Fetch round count for the selected event
             conn.close()
+
+            ####################
+            # ROUND SELECTION  #
+            ####################
+            round_id = st.selectbox(
+                "Select Round", 
+                options=[i + 1 for i in range(round_count)],  # Provide round options
+                format_func=lambda x: f"Round {x}"
+            )
 
             #####################
             # VOTING MANAGEMENT #
@@ -90,7 +101,7 @@ def admin_page():
             ###################
             # SONG MANAGEMENT #
             ###################
-            song_management(event_id)  # Manage songs for the selected event
+            song_management(event_id, round_id)  # Updated to pass round_id for song management
             upload_songs_csv()  # Upload new songs
         
         ##########

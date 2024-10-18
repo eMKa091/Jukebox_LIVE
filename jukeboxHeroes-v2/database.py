@@ -89,7 +89,8 @@ def init_db():
         CREATE TABLE IF NOT EXISTS event_songs (
             event_id INTEGER,
             song_id INTEGER,
-            PRIMARY KEY (event_id, song_id),
+            round_id INTEGER,
+            PRIMARY KEY (event_id, song_id, round_id),
             FOREIGN KEY (event_id) REFERENCES events(id),
             FOREIGN KEY (song_id) REFERENCES songs(id)
         )
@@ -130,22 +131,24 @@ def fetch_admin_user(username):
 def create_event(name, date, round_count):
     conn = sqlite3.connect(DATABASE)
     c = conn.cursor()
+
+    # Insert the new event
     c.execute('''
         INSERT INTO events (name, date, round_count) 
         VALUES (?, ?, ?)
     ''', (name, date, round_count))
     event_id = c.lastrowid
 
-    # Automatically assign all songs to the new event
+    # Automatically assign all songs from the master list (songs table) to the new event
     c.execute('SELECT id FROM songs')  # Get all song IDs from the songs table
     all_songs = c.fetchall()
 
     for song in all_songs:
         song_id = song[0]
         c.execute('''
-            INSERT INTO event_songs (event_id, song_id)
-            VALUES (?, ?)
-        ''', (event_id, song_id))
+            INSERT INTO event_songs (event_id, song_id, round_id)
+            VALUES (?, ?, ?)
+        ''', (event_id, song_id, None))  # Assign to the event without a round by default
 
     conn.commit()
     conn.close()
@@ -221,11 +224,37 @@ def add_song(title, artist):
 
 # Function to assign a song to an event (event_songs table)
 def assign_song_to_event(event_id, song_id, round_id=None):
-    conn = sqlite3.connect(DATABASE)
-    c = conn.cursor()
-    c.execute('INSERT INTO event_songs (event_id, song_id, round_id) VALUES (?, ?, ?)', (event_id, song_id, round_id))
-    conn.commit()
-    conn.close()
+    """
+    Assigns a song to an event in a specific round, checking for duplicates.
+    """
+    with sqlite3.connect(DATABASE) as conn:
+        c = conn.cursor()
+
+        # Fetch the song title for display purposes
+        c.execute('SELECT title FROM songs WHERE id = ?', (song_id,))
+        song = c.fetchone()
+        song_title = song[0] if song else "Unknown Song"
+
+        # Check if the song is already assigned to the event and round
+        c.execute('''
+            SELECT COUNT(*) FROM event_songs 
+            WHERE event_id = ? AND song_id = ? AND round_id = ?
+        ''', (event_id, song_id, round_id))
+        if c.fetchone()[0] > 0:
+            # Song is already assigned to this event and round
+            return False  # No need to insert again
+
+        # Insert the song if no duplicates are found
+        try:
+            c.execute('INSERT INTO event_songs (event_id, song_id, round_id) VALUES (?, ?, ?)', 
+                      (event_id, song_id, round_id))
+            conn.commit()
+            return True  # Success
+        except sqlite3.OperationalError as e:
+            st.error(f"Error assigning song: {e}")
+        except sqlite3.IntegrityError as e:
+            st.error(f"Integrity Error: {e}")
+        return False  # Failure
 
 # Function to retrieve all songs for a specific event
 def get_songs_for_event(event_id):
@@ -253,17 +282,22 @@ def update_song(song_id, title, artist):
     conn.commit()
     conn.close()
 
-def remove_song_from_event(event_id, song_id):
+# Function to remove songs
+def remove_song_from_event(event_id, song_id, round_id=None):
     """
-    Completely removes a song from the event by deleting the entry from the event_songs table.
+    Removes a song from an event for a specific round.
     """
-    conn = sqlite3.connect(DATABASE)
-    c = conn.cursor()
-    c.execute('''
-        DELETE FROM event_songs WHERE event_id = ? AND song_id = ?
-    ''', (event_id, song_id))
-    conn.commit()
-    conn.close()
+    with sqlite3.connect(DATABASE) as conn:
+        c = conn.cursor()
+        try:
+            c.execute('''
+                DELETE FROM event_songs 
+                WHERE event_id = ? AND song_id = ? AND round_id = ?
+            ''', (event_id, song_id, round_id))
+            conn.commit()
+        except sqlite3.OperationalError as e:
+            st.error(f"Error removing song: {e}")
+
 
 def delete_event(event_id):
     """
