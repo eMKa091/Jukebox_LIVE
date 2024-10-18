@@ -67,9 +67,13 @@ def song_management(event_id, round_id):
                     st.write(f"{len(added_songs)} song(s) were added to event '{event_name}' (Round: {round_id}).")
                     st.write(f"{len(already_assigned_songs)} song(s) were already assigned.")
 
-    #############################
+        if st.button("Add All Songs to Event"):
+            add_all_songs_to_event(event_id, round_id)
+            st.success(f"All songs were added to event '{event_name}' (Round: {round_id if round_id else 'No Round'}).")
+
+    #######################################
     # Event-Specific Song List (Removing) #
-    #############################
+    #######################################
     with col2:
         conn = sqlite3.connect(DATABASE)
         df_event_songs = pd.read_sql_query(
@@ -215,4 +219,34 @@ def remove_all_songs_from_event(event_id, round_id=None):
                 DELETE FROM event_songs 
                 WHERE event_id = ?
             ''', (event_id,))
+        conn.commit()
+
+def add_all_songs_to_event(event_id, round_id=None):
+    """
+    Adds all songs from the master song list to a specific event and round.
+    If round_id is None, adds the songs without assigning a round.
+    """
+    with sqlite3.connect(DATABASE) as conn:
+        c = conn.cursor()
+
+        # Get all song IDs from the songs table (master list)
+        c.execute('SELECT id FROM songs')
+        all_songs = c.fetchall()
+
+        # Loop through each song and add it to the event
+        for song in all_songs:
+            song_id = song[0]
+
+            # Check if the song is already assigned to avoid duplicates
+            c.execute('''
+                SELECT COUNT(*) FROM event_songs 
+                WHERE event_id = ? AND song_id = ? AND round_id = ?
+            ''', (event_id, song_id, round_id))
+
+            if c.fetchone()[0] == 0:  # Only add if not already assigned
+                c.execute('''
+                    INSERT INTO event_songs (event_id, song_id, round_id)
+                    VALUES (?, ?, ?)
+                ''', (event_id, song_id, round_id))
+
         conn.commit()
