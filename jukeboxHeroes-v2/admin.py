@@ -102,7 +102,7 @@ def admin_page():
             # SONG MANAGEMENT #
             ###################
             song_management(event_id, round_id)  # Updated to pass round_id for song management
-            upload_songs_csv()  # Upload new songs
+            upload_songs_csv()
         
         ##########
         # BACKUP #

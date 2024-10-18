@@ -4,7 +4,6 @@ from hashlib import sha256
 
 DATABASE = 'votes.db'
 
-# Function to initialize or update the entire database schema
 def init_db():
     conn = sqlite3.connect(DATABASE)
     c = conn.cursor()
@@ -99,7 +98,6 @@ def init_db():
     conn.commit()
     conn.close()
 
-# Function to add an admin user (with hashed password)
 def add_admin_user(username, password):
     conn = sqlite3.connect(DATABASE)
     c = conn.cursor()
@@ -118,7 +116,6 @@ def add_admin_user(username, password):
     finally:
         conn.close()
 
-# Function to fetch an admin user by username
 def fetch_admin_user(username):
     conn = sqlite3.connect(DATABASE)
     c = conn.cursor()
@@ -127,7 +124,6 @@ def fetch_admin_user(username):
     conn.close()
     return user
 
-# Function to create a new event
 def create_event(name, date, round_count):
     conn = sqlite3.connect(DATABASE)
     c = conn.cursor()
@@ -154,7 +150,6 @@ def create_event(name, date, round_count):
     conn.close()
     return event_id
 
-# Function to create rounds for an event
 def create_round(event_id, round_number, description):
     conn = sqlite3.connect(DATABASE)
     c = conn.cursor()
@@ -165,7 +160,6 @@ def create_round(event_id, round_number, description):
     conn.commit()
     conn.close()
 
-# Function to store a vote
 def store_vote(uniqueID, randomNumber, song, event_id, round_id, date):
     conn = sqlite3.connect(DATABASE)
     c = conn.cursor()
@@ -176,7 +170,6 @@ def store_vote(uniqueID, randomNumber, song, event_id, round_id, date):
     conn.commit()
     conn.close()
 
-# Function to retrieve votes for an event and round
 def fetch_votes(event_id, round_id):
     conn = sqlite3.connect(DATABASE)
     c = conn.cursor()
@@ -187,7 +180,6 @@ def fetch_votes(event_id, round_id):
     conn.close()
     return votes
 
-# Function to mark a song as played
 def mark_song_as_played(song_id, event_id, round_id):
     conn = sqlite3.connect(DATABASE)
     c = conn.cursor()
@@ -198,7 +190,6 @@ def mark_song_as_played(song_id, event_id, round_id):
     conn.commit()
     conn.close()
 
-# Function to retrieve played songs for a round
 def fetch_played_songs(event_id, round_id):
     conn = sqlite3.connect(DATABASE)
     c = conn.cursor()
@@ -209,7 +200,6 @@ def fetch_played_songs(event_id, round_id):
     conn.close()
     return played_songs
 
-# Function to add a new song to the songs table
 def add_song(title, artist):
     conn = sqlite3.connect(DATABASE)
     c = conn.cursor()
@@ -222,7 +212,6 @@ def add_song(title, artist):
     conn.close()
     return song_id
 
-# Function to assign a song to an event (event_songs table)
 def assign_song_to_event(event_id, song_id, round_id=None):
     """
     Assigns a song to an event in a specific round, checking for duplicates.
@@ -256,7 +245,6 @@ def assign_song_to_event(event_id, song_id, round_id=None):
             st.error(f"Integrity Error: {e}")
         return False  # Failure
 
-# Function to retrieve all songs for a specific event
 def get_songs_for_event(event_id):
     conn = sqlite3.connect(DATABASE)
     c = conn.cursor()
@@ -270,7 +258,6 @@ def get_songs_for_event(event_id):
     conn.close()
     return songs
 
-# Function to update song details
 def update_song(song_id, title, artist):
     conn = sqlite3.connect(DATABASE)
     c = conn.cursor()
@@ -282,7 +269,6 @@ def update_song(song_id, title, artist):
     conn.commit()
     conn.close()
 
-# Function to remove songs
 def remove_song_from_event(event_id, song_id, round_id=None):
     """
     Removes a song from an event for a specific round.
@@ -297,7 +283,6 @@ def remove_song_from_event(event_id, song_id, round_id=None):
             conn.commit()
         except sqlite3.OperationalError as e:
             st.error(f"Error removing song: {e}")
-
 
 def delete_event(event_id):
     """

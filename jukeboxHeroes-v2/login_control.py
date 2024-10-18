@@ -6,7 +6,6 @@ from database import fetch_admin_user
 def hash_password(password):
     return hashlib.sha256(password.encode()).hexdigest()
 
-# Function to authenticate admin user
 def authenticate(username, password):
     user = fetch_admin_user(username)
     if user and user[2] == hash_password(password):  
@@ -14,7 +13,6 @@ def authenticate(username, password):
     else: 
         return False
 
-# Streamlit login form
 def admin_login():
     st.title("Admin Login")
 

@@ -5,7 +5,6 @@ import sqlite3
 
 DATABASE = 'votes.db'
 
-# Function to get the active event for voting
 def get_active_event():
     conn = sqlite3.connect(DATABASE)
     c = conn.cursor()
@@ -14,7 +13,6 @@ def get_active_event():
     conn.close()
     return event if event else None
 
-# Function to fetch event details
 def get_event_details(event_id):
     conn = sqlite3.connect(DATABASE)
     c = conn.cursor()
@@ -23,7 +21,6 @@ def get_event_details(event_id):
     conn.close()
     return event if event else None
 
-# Voting page logic
 def voting_page():
     if st.button(label="Admin page"):
         st.session_state['page'] = 'admin'
