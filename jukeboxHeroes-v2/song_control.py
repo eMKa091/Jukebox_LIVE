@@ -17,9 +17,23 @@ def upload_songs_csv():
         try:
             df = pd.read_csv(uploaded_file)
             if 'Author' in df.columns and 'Song' in df.columns:
+                added_count = 0
+                skipped_count = 0
+                
                 for _, row in df.iterrows():
-                    add_song(row['Song'], row['Author'])  # 'Song' is title, 'Author' is artist
-                st.success(f"Uploaded {len(df)} songs successfully.")
+                    title = row['Song']
+                    artist = row['Author']
+                    
+                    # Try to add the song, if it's not a duplicate
+                    if add_song(title, artist):
+                        added_count += 1
+                    else:
+                        skipped_count += 1
+
+                st.success(f"Uploaded {added_count} songs successfully.")
+                
+                if skipped_count > 0:
+                    st.info(f"Skipped {skipped_count} duplicates.")
             else:
                 st.error("CSV must have 'Author' and 'Song' columns.")
         except Exception as e:

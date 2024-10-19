@@ -43,16 +43,28 @@ def admin_page():
             
         else:
             # Step 3: If there are entries, display the content
-            st.header("These are songs you can play in database:")
             c.execute('SELECT id, title, artist FROM songs')
             rows = c.fetchall()
+            if rows:
+                # Display a header
+                st.header("These are songs in DB you can play:")
+
+                # Loop through each song and create an expander for it
+                for row in rows:
+                    song_id, title, artist = row
+
+                    # Create an expander for each song
+                    with st.expander(f"{title} by {artist}"):
+                        st.write(f"**ID**: {song_id}")
+                        st.write(f"**Title**: {title}")
+                        st.write(f"**Artist**: {artist}")
+            else:
+                st.warning("No songs found in the database.")
             
-            # Print the entries in a nice format
-            for row in rows:
-                id, title, artist = row
-                st.markdown(f"- **Song:** {title}  \n"
-                    f"  **Artist:** {artist}  \n"
-                    f"  **Database ID:** {id}")
+            st.divider()
+            st.subheader("Want more songs?")
+            upload_songs_csv()
+
 
     elif menu_selection == "Event Management":
         st.title("Event Management")
@@ -94,15 +106,11 @@ def admin_page():
                     st.rerun()
 
     # Song Management Section
-    elif menu_selection == "Song Management":
-        st.title("Song Management")
-        
-        # Upload new song list
-        upload_songs_csv()
-        
+    elif menu_selection == "Song management for events":
+        st.title("Song management for events")
+       
         # Manage event songs
         if events:
-            st.subheader("Manage Event Songs")
             event_name_selected = st.selectbox("Select Event", [e[1] for e in events])
             event_id_selected = [e[0] for e in events if e[1] == event_name_selected][0]
             

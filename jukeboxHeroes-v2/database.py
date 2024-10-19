@@ -205,14 +205,26 @@ def fetch_played_songs(event_id, round_id):
 def add_song(title, artist):
     conn = sqlite3.connect(DATABASE)
     c = conn.cursor()
+
+    # Check if the song already exists in the database
+    c.execute('''
+        SELECT COUNT(*) FROM songs WHERE title = ? AND artist = ?
+    ''', (title, artist))
+    if c.fetchone()[0] > 0:
+        # Song already exists, skip insertion
+        conn.close()
+        return False
+
+    # Insert the new song if it doesn't exist
     c.execute('''
         INSERT INTO songs (title, artist)
         VALUES (?, ?)
     ''', (title, artist))
-    song_id = c.lastrowid
+    
     conn.commit()
     conn.close()
-    return song_id
+    
+    return True  # Return True to indicate the song was successfully added
 
 def assign_song_to_event(event_id, song_id, round_id=None):
     """
