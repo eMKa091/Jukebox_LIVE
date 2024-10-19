@@ -72,6 +72,11 @@ def admin_page():
         st.title("Admin Dashboard")
         st.divider()
         
+        if not check_songs_exist():
+            st.warning("No songs found in the database. Please upload a song list before proceeding.")
+            upload_songs_csv()
+            st.stop()
+
         #################
         # MANAGE EVENTS #
         #################

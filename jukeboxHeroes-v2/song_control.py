@@ -20,6 +20,7 @@ def upload_songs_csv():
                 for _, row in df.iterrows():
                     add_song(row['Song'], row['Author'])  # 'Song' is title, 'Author' is artist
                 st.success(f"Uploaded {len(df)} songs successfully.")
+                st.rerun()
             else:
                 st.error("CSV must have 'Author' and 'Song' columns.")
         except Exception as e:
@@ -106,6 +107,14 @@ def song_management(event_id, round_id):
 
                     # Display summary message
                     st.write(f"{len(removed_songs)} song(s) were removed from event '{event_name}' (Round: {round_id}).")
+
+def check_songs_exist():
+    conn = sqlite3.connect(DATABASE)
+    c = conn.cursor()
+    c.execute("SELECT COUNT(*) FROM songs")
+    count = c.fetchone()[0]
+    conn.close()
+    return count > 0
 
 #############################
 # DATABASE BACKUP FUNCTIONS #
