@@ -14,7 +14,9 @@ def init_db():
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             name TEXT,
             date TEXT,
-            round_count INTEGER
+            round_count INTEGER,
+            current_round INTEGER,
+            voting_active BOOLEAN  
         )
     ''')
 
@@ -291,30 +293,24 @@ def delete_event(event_id):
     conn = sqlite3.connect(DATABASE)
     c = conn.cursor()
 
-    try:
-        st.write(f"Attempting to delete event with ID: {event_id}")
-        
+    try:      
         # Check if the event exists in the votes table
-        c.execute('SELECT * FROM votes WHERE event_id = ?', (event_id,))
-        votes_for_event = c.fetchall()
-        st.write(f"Votes for event: {votes_for_event}")
+        #c.execute('SELECT * FROM votes WHERE event_id = ?', (event_id,))
+        #votes_for_event = c.fetchall()
+        #st.write(f"Votes for event: {votes_for_event}")
         
         # Check if the event exists in the event_songs table
-        c.execute('SELECT * FROM event_songs WHERE event_id = ?', (event_id,))
-        songs_for_event = c.fetchall()
-        st.write(f"Songs for event: {songs_for_event}")
+        #c.execute('SELECT * FROM event_songs WHERE event_id = ?', (event_id,))
+        #songs_for_event = c.fetchall()
         
         # Delete songs associated with the event
         c.execute('DELETE FROM event_songs WHERE event_id = ?', (event_id,))
-        st.write("Deleted songs from event_songs")
 
         # Delete votes associated with the event
         c.execute('DELETE FROM votes WHERE event_id = ?', (event_id,))
-        st.write("Deleted votes from votes")
 
         # Finally, delete the event itself
         c.execute('DELETE FROM events WHERE id = ?', (event_id,))
-        st.write(f"Deleted event {event_id} from events table")
 
         conn.commit()
         st.success(f"Event {event_id} and all related data have been deleted.")
@@ -405,32 +401,26 @@ def update_voting_state(event_id, voting_active, current_round=None):
     conn.commit()
     conn.close()
 
-def start_voting(event_id):
+def start_voting(event_id, round_id):
     conn = sqlite3.connect(DATABASE)
     c = conn.cursor()
-
-    # First, deactivate voting for all other events
-    c.execute('''
-        UPDATE events SET voting_active = 0 WHERE voting_active = 1
-    ''', (event_id,))
-
-    # Then, activate voting for the specified event
-    c.execute('''
-        UPDATE events SET voting_active = 1 WHERE id = ?
-    ''', (event_id,))
-
+    
+    # Update the event to mark voting as active
+    c.execute('''UPDATE events SET voting_active = 1 WHERE id = ?''', (event_id,))
+    
+    # Additional logic for round-based voting if needed
+    # You can use round_id for managing round-specific voting
+    
     conn.commit()
     conn.close()
 
-def stop_voting(event_id):
+def stop_voting(event_id, round_id):
     conn = sqlite3.connect(DATABASE)
     c = conn.cursor()
-
-    # Deactivate voting for the specified event
-    c.execute('''
-        UPDATE events SET voting_active = 0 WHERE id = ?
-    ''', (event_id,))
-
+    
+    # Update the event to mark voting as inactive
+    c.execute('''UPDATE events SET voting_active = 0 WHERE id = ?''', (event_id,))
+    
     conn.commit()
     conn.close()
 

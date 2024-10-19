@@ -20,7 +20,6 @@ def upload_songs_csv():
                 for _, row in df.iterrows():
                     add_song(row['Song'], row['Author'])  # 'Song' is title, 'Author' is artist
                 st.success(f"Uploaded {len(df)} songs successfully.")
-                st.rerun()
             else:
                 st.error("CSV must have 'Author' and 'Song' columns.")
         except Exception as e:
@@ -39,16 +38,20 @@ def song_management(event_id, round_id):
     #############################
     with col1:
         conn = sqlite3.connect(DATABASE)
-        df_master = pd.read_sql_query("SELECT * FROM songs", conn)
+        df_event_songs = pd.read_sql_query(
+            "SELECT songs.id, songs.title, songs.artist FROM event_songs JOIN songs ON event_songs.song_id = songs.id WHERE event_songs.event_id = ? AND (event_songs.round_id = ? OR event_songs.round_id IS NULL)", 
+            conn, 
+            params=(event_id, round_id)
+            )
         conn.close()
 
         # Display the master song list and allow adding songs to the event
-        if not df_master.empty:
+        if not df_event_songs.empty:
             st.write("Select songs to add:")
             selected_songs_to_add = st.multiselect(
                 "Add to event:", 
-                options=df_master['id'].tolist(), 
-                format_func=lambda x: f"{df_master[df_master['id'] == x]['title'].values[0]} by {df_master[df_master['id'] == x]['artist'].values[0]}",
+                options=df_event_songs['id'].tolist(), 
+                format_func=lambda x: f"{df_event_songs[df_event_songs['id'] == x]['title'].values[0]} by {df_event_songs[df_event_songs['id'] == x]['artist'].values[0]}",
                 key="add_songs_multiselect"
             )
 
@@ -247,10 +250,18 @@ def add_all_songs_to_event(event_id, round_id=None):
             song_id = song[0]
 
             # Check if the song is already assigned to avoid duplicates
-            c.execute('''
-                SELECT COUNT(*) FROM event_songs 
-                WHERE event_id = ? AND song_id = ? AND round_id = ?
-            ''', (event_id, song_id, round_id))
+            if round_id is None:
+                # Handle the case where round_id is NULL
+                c.execute('''
+                    SELECT COUNT(*) FROM event_songs 
+                    WHERE event_id = ? AND song_id = ? AND round_id IS NULL
+                ''', (event_id, song_id))
+            else:
+                # Handle the case where round_id is provided
+                c.execute('''
+                    SELECT COUNT(*) FROM event_songs 
+                    WHERE event_id = ? AND song_id = ? AND round_id = ?
+                ''', (event_id, song_id, round_id))
 
             if c.fetchone()[0] == 0:  # Only add if not already assigned
                 c.execute('''
