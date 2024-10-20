@@ -348,22 +348,21 @@ def show_songs_per_round(event_id):
 
     # Loop through each round and display songs assigned to that round
     for round_id in range(1, round_count + 1):
-        st.write(f"**Round {round_id}:**")
-        
-        # Fetch songs assigned to this specific round
-        c.execute('''
-            SELECT s.title, s.artist
-            FROM songs s
-            JOIN event_songs es ON s.id = es.song_id
-            WHERE es.event_id = ? AND es.round_id = ? AND es.played = 0
-        ''', (event_id, round_id))
-        songs = c.fetchall()
+        with st.expander(f"Round {round_id}", expanded=False):
+            # Fetch songs assigned to this specific round
+            c.execute('''
+                SELECT s.title, s.artist
+                FROM songs s
+                JOIN event_songs es ON s.id = es.song_id
+                WHERE es.event_id = ? AND es.round_id = ? AND es.played = 0
+            ''', (event_id, round_id))
+            songs = c.fetchall()
 
-        if songs:
-            for title, artist in songs:
-                st.write(f"- {title} by {artist}")
-        else:
-            st.write("No songs assigned to this round.")
+            if songs:
+                for title, artist in songs:
+                    st.write(f"- {title} by {artist}")
+            else:
+                st.write("No songs assigned to this round.")
 
     conn.close()
 
