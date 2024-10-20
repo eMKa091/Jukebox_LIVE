@@ -22,7 +22,7 @@ def admin_page():
 
     # Sidebar Menu for Navigation
     st.sidebar.title("Admin Menu")
-    menu_selection = st.sidebar.radio("Go to", ["Band`s playlist overview", "Event Management", "Song Management", "Voting Control", "Data Backup", "Voting Page", "Band Section"])
+    menu_selection = st.sidebar.radio("Go to", ["Band`s playlist overview", "Event Management", "Song management for events", "Voting Control", "Data Backup", "Voting Page", "Band Section"])
 
     # Event Management Section
     if menu_selection == "Band`s playlist overview":
