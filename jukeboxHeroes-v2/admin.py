@@ -143,7 +143,6 @@ def admin_page():
         
         else:
             st.subheader(":flashlight: Please create an event first")
-
 ##################
 # VOTING CONTROL #
 ##################
@@ -190,7 +189,6 @@ def admin_page():
         if st.button("Backup Now"):
             with open(DATABASE, "rb") as file:
                 st.download_button(label="Download Backup", data=file, file_name="votes_backup.db")
-
 ############################
 # NAVIGATION - VOTING PAGE #
 ############################
