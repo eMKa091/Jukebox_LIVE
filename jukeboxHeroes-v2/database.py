@@ -149,6 +149,13 @@ def create_event(name, date, round_count):
             VALUES (?, ?, ?)
         ''', (event_id, song_id, None))  # Assign to the event without a round by default
 
+    for song in all_songs:
+        song_id = song[0]
+        c.execute('''
+            INSERT INTO event_songs (event_id, song_id, round_id)
+            VALUES (?, ?, ?)
+        ''', (event_id, song_id, 1))  # Assign to the event without a round by default
+
     conn.commit()
     conn.close()
     return event_id
@@ -284,20 +291,13 @@ def update_song(song_id, title, artist):
     conn.commit()
     conn.close()
 
-def remove_song_from_event(event_id, song_id, round_id=None):
-    """
-    Removes a song from an event for a specific round.
-    """
-    with sqlite3.connect(DATABASE) as conn:
-        c = conn.cursor()
-        try:
-            c.execute('''
-                DELETE FROM event_songs 
-                WHERE event_id = ? AND song_id = ? AND round_id = ?
-            ''', (event_id, song_id, round_id))
-            conn.commit()
-        except sqlite3.OperationalError as e:
-            st.error(f"Error removing song: {e}")
+def remove_song_from_event(event_id, song_id):
+    """Remove a song from an event."""
+    conn = sqlite3.connect(DATABASE)
+    c = conn.cursor()
+    c.execute("DELETE FROM event_songs WHERE event_id = ? AND song_id = ?", (event_id, song_id))
+    conn.commit()
+    conn.close()
 
 def delete_event(event_id):
     """

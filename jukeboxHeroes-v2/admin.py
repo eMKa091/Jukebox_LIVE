@@ -22,10 +22,15 @@ def admin_page():
 
     # Sidebar Menu for Navigation
     st.sidebar.title("Admin Menu")
-    menu_selection = st.sidebar.radio("Go to", ["Band`s playlist overview", "Event Management", "Song management for events", "Voting Control", "Data Backup", "Voting Page", "Band Section"])
+    menu_selection = st.sidebar.radio("Go to", ["Master song list", "Event Management", "Song management for events", "Voting Control", "Data Backup", "Voting Page", "Band Section"])
 
-    # Event Management Section
-    if menu_selection == "Band`s playlist overview":
+##########################################################################
+#                               PAGE BUILD                               #
+##########################################################################
+####################
+#  SONGS - MASTER  #
+####################
+    if menu_selection == "Master song list":
         
         conn = sqlite3.connect(DATABASE)
         c = conn.cursor()
@@ -47,7 +52,7 @@ def admin_page():
             rows = c.fetchall()
             if rows:
                 # Display a header
-                st.header("These are songs in DB you can play:")
+                st.header(":musical_note: These are songs in DB used as a master")
 
                 # Loop through each song and create an expander for it
                 for row in rows:
@@ -65,50 +70,53 @@ def admin_page():
             st.subheader("Want more songs?")
             upload_songs_csv()
 
-
+####################
+# EVENT MANAGEMENT #
+####################
     elif menu_selection == "Event Management":
-        st.title("Event Management")
-        
-        # Event creation form
-        st.subheader("Create New Event")
-        with st.form(key='create_event_form'):
-            new_event_name = st.text_input("Event Name")
-            new_event_date = st.date_input("Event Date")
-            new_event_rounds = st.number_input("Number of Rounds", min_value=1, max_value=10, value=1)
-            create_event_button = st.form_submit_button("Create Event")
+            # Event creation form
+            st.subheader(":new: Create New Event", divider=True)
+            with st.form(key='create_event_form'):
+                new_event_name = st.text_input("Event Name")
+                new_event_date = st.date_input("Event Date")
+                new_event_rounds = st.number_input("Number of Rounds", min_value=1, max_value=10, value=1)
+                create_event_button = st.form_submit_button("Create Event")
 
-            if create_event_button and new_event_name and new_event_date:
-                event_id = create_event(new_event_name, str(new_event_date), new_event_rounds)
-                st.success(f"Event '{new_event_name}' created with ID {event_id}")
-                
-                # Automatically assign all songs to the new event
-                conn = sqlite3.connect(DATABASE)
-                c = conn.cursor()
-                c.execute("SELECT id FROM songs")
-                songs_exist = c.fetchall()
-                conn.close()
-                
-                if songs_exist:
-                    add_all_songs_to_event(event_id)
-                    st.success(f"All songs assigned to event '{new_event_name}' by default.")
-                
-                # Reload events after creation
-                events = load_events()
+                if create_event_button and new_event_name and new_event_date:
+                    event_id = create_event(new_event_name, str(new_event_date), new_event_rounds)
+                    st.success(f"Event '{new_event_name}' created with ID {event_id}")
+                    
+                    # Automatically assign all songs to the new event
+                    conn = sqlite3.connect(DATABASE)
+                    c = conn.cursor()
+                    c.execute("SELECT id FROM songs")
+                    songs_exist = c.fetchall()
+                    conn.close()
+                    
+                    if songs_exist:
+                        add_all_songs_to_event(event_id)
+                        st.success(f"All songs assigned to event '{new_event_name}' by default.")
+                    
+                    # Reload events after creation
+                    events = load_events()
 
-        # Delete events
-        st.subheader("Delete Existing Events")
-        if not events:
-            st.warning("No events found. Please create an event before proceeding.")
-        else:
-            for event_id, event_name in events:
-                if st.button(f"Delete Event '{event_name}'", key=f"delete_{event_id}"):
-                    delete_event(event_id)
-                    st.rerun()
+            # Delete events
+            st.write("")
+            st.write("")
+            st.subheader(":x: Delete Existing Events", divider=True)
+            if not events:
+                st.warning("No events found. Please create an event before proceeding.")
+            else:
+                for event_id, event_name in events:
+                    if st.button(f"Delete Event '{event_name}'", key=f"delete_{event_id}"):
+                        delete_event(event_id)
+                        st.rerun()
 
-    # Song Management Section
+#############################
+# SONG MANAGEMENT PER EVENT #
+#############################
     elif menu_selection == "Song management for events":
-        st.title("Song management for events")
-       
+      
         # Manage event songs
         if events:
             event_name_selected = st.selectbox("Select Event", [e[1] for e in events])
@@ -128,41 +136,17 @@ def admin_page():
                 round_id = st.selectbox("Select Round", list(range(1, round_count + 1)))
 
             song_management(event_id_selected, round_id)
-
-            # Expandable list of songs for the event/round
-            st.subheader("Songs Assigned to Event")
-            conn = sqlite3.connect(DATABASE)
-            c = conn.cursor()
-            
-            # Fetch songs assigned to the event (and optionally, the round)
-            if round_count == 1:
-                c.execute('''SELECT songs.title, songs.artist 
-                            FROM event_songs event_songs
-                            JOIN songs songs ON event_songs.song_id = songs.id
-                            WHERE event_songs.event_id = ? AND event_songs.round_id IS NULL''', (event_id_selected,))
-            else:
-                c.execute('''SELECT songs.title, songs.artist 
-                            FROM event_songs event_songs
-                            JOIN songs songs ON event_songs.song_id = songs.id
-                            WHERE event_songs.event_id = ? AND (event_songs.round_id = ? OR event_songs.round_id IS NULL)''', 
-                            (event_id_selected, round_id))
-            
-            songs = c.fetchall()
-            conn.close()
-            
-            for title, artist in songs:
-                with st.expander(f"{title} by {artist}"):
-                    st.write(f"Title: {title}")
-                    st.write(f"Artist: {artist}")
+        
         else:
-            st.warning("No events found. Please create an event first.")
+            st.subheader(":flashlight: Please create an event first")
 
-    # Voting Control Section
+##################
+# VOTING CONTROL #
+##################
     elif menu_selection == "Voting Control":
-        st.title("Voting Control")
-    
+          
         if events:
-            st.subheader("Start/Stop Voting")
+            st.subheader(":wrench: Manage voting", divider=True)
             event_name_selected = st.selectbox("Select Event for Voting", [e[1] for e in events])
             event_id_selected = [e[0] for e in events if e[1] == event_name_selected][0]
             
@@ -184,29 +168,37 @@ def admin_page():
                 if st.button("Stop Voting"):
                     stop_voting(event_id_selected, round_id)
                     st.success(f"Voting stopped for event {event_name_selected}, round {round_id}.")
+                    st.rerun()
             else:
                 if st.button("Start Voting"):
                     start_voting(event_id_selected, round_id)
                     st.success(f"Voting started for event {event_name_selected}, round {round_id}.")
-                else:
-                    st.warning("No events found. Please create an event first.")
-
-    # Data Backup Section
+                    st.rerun()
+        else:
+            st.subheader(":flashlight: Please create an event first")
+#####################
+# BACKUP OPERATIONS #
+#####################
     elif menu_selection == "Data Backup":
-        st.title("Data Backup")
-        st.subheader("Backup the database")
+        st.subheader(":back: :up: the database")
         
         # Backup functionality (simplified for demonstration purposes)
         if st.button("Backup Now"):
             with open(DATABASE, "rb") as file:
                 st.download_button(label="Download Backup", data=file, file_name="votes_backup.db")
 
+############################
+# NAVIGATION - VOTING PAGE #
+############################
     elif menu_selection == "Voting Page":
         #if st.button("Go to Voting Page"):
         st.session_state['page'] = 'voting'
         st.rerun()
 
+#############################
+# NAVIGATION - BAND SECTION #
+#############################
     elif menu_selection == "Band Section":
         #if st.button("Go to Band Section"):
-        st.session_state['page'] = 'bandSection'
+        st.session_state['page'] = 'band_overview'
         st.rerun()

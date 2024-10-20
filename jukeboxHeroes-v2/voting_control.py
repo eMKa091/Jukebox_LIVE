@@ -84,9 +84,10 @@ def voting_control(event_id, round_count):
 # Splash Screen Display    #
 ############################
 def display_splash_screen(message="No ongoing voting."):
-    st.header("Vážení hosté,")
-    st.header(message)
-    st.subheader("Neváhejte nás však kontaktovat:")
+    st.subheader("Vážení hosté,")
+    st.subheader(message)
+    st.divider()
+    st.subheader("Neváhejte nás kontaktovat:")
     st.write("📞 +420 608 462 008")
     st.write("✉️ [rudyhorvat77@gmail.com](mailto:rudyhorvat77@gmail.com)")
     st.divider()

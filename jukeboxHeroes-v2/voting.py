@@ -56,8 +56,8 @@ def voting_page():
 
     # Fetch the songs for voting (considering rounds if it's a multi-round event)
     if round_count > 1:
-        songs = fetch_songs_for_voting(event_id, current_round)
-        st.subheader(f"Round {current_round} Voting")
+        songs = fetch_songs_for_voting(event_id)
+        st.subheader(f"Round {current_round} voting")
     else:
         songs = fetch_songs_for_voting(event_id)
         st.subheader("Single-Round Voting")

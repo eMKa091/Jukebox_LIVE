@@ -39,91 +39,111 @@ def upload_songs_csv():
         except Exception as e:
             st.error(f"Error processing the file: {e}")
 
+# Song Management Section for a specific event and round
 def song_management(event_id, round_id):
     event_name = get_event_name(event_id)
+    
+    # Fetch number of rounds for the event
+    conn = sqlite3.connect(DATABASE)
+    c = conn.cursor()
+    c.execute("SELECT round_count FROM events WHERE id = ?", (event_id,))
+    round_count = c.fetchone()[0]
+    conn.close()
+
     st.divider()
-    st.subheader(f"Songs (Event: {event_name}, Round: {round_id})")
 
-    # Split layout for master song list and event-specific songs
-    col1, col2 = st.columns(2)
-
-    #############################
-    # Master Song List (Adding) #
-    #############################
-    with col1:
+    # Case 1: Single-round event
+    if round_count == 1:
+        st.info("All songs from master DB were assigned by default, hence you can only remove songs below!")
+        st.divider()
+        
         conn = sqlite3.connect(DATABASE)
+        # Fetch all songs assigned to this event (no round_id filtering since it's a single-round event)
         df_event_songs = pd.read_sql_query(
-            "SELECT songs.id, songs.title, songs.artist FROM event_songs JOIN songs ON event_songs.song_id = songs.id WHERE event_songs.event_id = ? AND (event_songs.round_id = ? OR event_songs.round_id IS NULL)", 
-            conn, 
-            params=(event_id, round_id)
-            )
-        conn.close()
-
-        # Display the master song list and allow adding songs to the event
-        if not df_event_songs.empty:
-            st.write("Select songs to add:")
-            selected_songs_to_add = st.multiselect(
-                "Add to event:", 
-                options=df_event_songs['id'].tolist(), 
-                format_func=lambda x: f"{df_event_songs[df_event_songs['id'] == x]['title'].values[0]} by {df_event_songs[df_event_songs['id'] == x]['artist'].values[0]}",
-                key="add_songs_multiselect"
-            )
-
-            # Add Songs Button
-            if st.button("Add Selected Songs"):
-                added_songs = []
-                already_assigned_songs = []
-
-                if selected_songs_to_add:
-                    for song_id in selected_songs_to_add:
-                        if assign_song_to_event(event_id, song_id, round_id):
-                            added_songs.append(song_id)
-                        else:
-                            already_assigned_songs.append(song_id)
-
-                    # Display summary message
-                    st.write(f"{len(added_songs)} song(s) were added to event '{event_name}' (Round: {round_id}).")
-                    st.write(f"{len(already_assigned_songs)} song(s) were already assigned.")
-
-        if st.button("Add All Songs to Event"):
-            add_all_songs_to_event(event_id, round_id)
-            st.success(f"All songs were added to event '{event_name}' (Round: {round_id if round_id else 'No Round'}).")
-
-    #######################################
-    # Event-Specific Song List (Removing) #
-    #######################################
-    with col2:
-        conn = sqlite3.connect(DATABASE)
-        df_event_songs = pd.read_sql_query(
-            "SELECT songs.id, songs.title, songs.artist FROM event_songs JOIN songs ON event_songs.song_id = songs.id WHERE event_songs.event_id = ? AND event_songs.round_id = ?", 
-            conn, 
-            params=(event_id, round_id)
+            """
+            SELECT s.id, s.title, s.artist 
+            FROM songs s 
+            JOIN event_songs es ON s.id = es.song_id 
+            WHERE es.event_id = ? AND es.played = 0
+            """, 
+            conn, params=(event_id,)
         )
         conn.close()
 
         if not df_event_songs.empty:
-            st.write("Select songs to remove:")
             selected_songs_to_remove = st.multiselect(
-                "Remove from event:", 
+                ":x: Remove from event:", 
                 options=df_event_songs['id'].tolist(), 
                 format_func=lambda x: f"{df_event_songs[df_event_songs['id'] == x]['title'].values[0]} by {df_event_songs[df_event_songs['id'] == x]['artist'].values[0]}",
                 key="remove_songs_multiselect"
             )
+
+            if st.button("Remove selected songs"):
+                for song_id in selected_songs_to_remove:
+                    remove_song_from_event(event_id, song_id)
+                st.success(f"Removed selected songs from event '{event_name}'.")
+
             if st.button("Remove All Songs from Event"):
                 remove_all_songs_from_event(event_id)
-                st.success(f"All songs were removed from event {event_name}.")
-            
-            # Remove Songs Button
-            if st.button("Remove Selected Songs"):
-                removed_songs = []
+                st.success(f"All songs removed from event '{event_name}'.")
 
-                if selected_songs_to_remove:
+    # Case 2: Multi-round event
+    else:
+        # Fetch songs assigned to this specific round
+        conn = sqlite3.connect(DATABASE)
+        df_event_songs = pd.read_sql_query(
+            """
+            SELECT s.id, s.title, s.artist 
+            FROM songs s 
+            JOIN event_songs es ON s.id = es.song_id 
+            WHERE es.event_id = ? AND es.round_id = ? AND es.played = 0
+            """,
+            conn, params=(event_id, round_id)
+        )
+        conn.close()
+        
+        st.subheader(f":male-mechanic: Manage songs for round {round_id}", divider=True)
+        col1, col2 = st.columns(2)
+        with col1:
+            st.write("")                   
+            ###############################################
+            # Remove songs that the band will play anyway #
+            ###############################################
+            if not df_event_songs.empty:
+                selected_songs_to_remove = st.multiselect(
+                    ":x: Remove from round:", 
+                    options=df_event_songs['id'].tolist(), 
+                    format_func=lambda x: f"{df_event_songs[df_event_songs['id'] == x]['title'].values[0]} by {df_event_songs[df_event_songs['id'] == x]['artist'].values[0]}",
+                    key="remove_songs_multiselect"
+                )
+
+                if st.button("Remove selected songs from round"):
                     for song_id in selected_songs_to_remove:
-                        remove_song_from_event(event_id, song_id, round_id)
-                        removed_songs.append(song_id)
+                        remove_song_from_event(event_id, song_id)
+                    st.success(f"Removed selected songs from round {round_id}.")
+                    st.rerun()
+            else:
+                st.write(f"No songs are assigned to round {round_id}.")
 
-                    # Display summary message
-                    st.write(f"{len(removed_songs)} song(s) were removed from event '{event_name}' (Round: {round_id}).")
+        with col2:
+            st.write("")
+            ########################################
+            #  Mark played songs in current round  #
+            ########################################
+            selected_songs_as_played = st.multiselect(
+                ":white_check_mark: Mark as played:", 
+                options=df_event_songs['id'].tolist(), 
+                format_func=lambda x: f"{df_event_songs[df_event_songs['id'] == x]['title'].values[0]} by {df_event_songs[df_event_songs['id'] == x]['artist'].values[0]}",
+                key="mark_songs_as_played_multiselect"
+            )
+
+            if st.button("Mark selected songs as played"):
+                for song_id in selected_songs_as_played:
+                    mark_song_as_played(event_id, song_id)
+                st.success(f"Marked {len(selected_songs_as_played)} song(s) as played for round {round_id}.")
+        
+        st.write("")
+        show_songs_per_round(event_id)
 
 def check_songs_exist():
     conn = sqlite3.connect(DATABASE)
@@ -161,29 +181,32 @@ def export_songs_to_csv():
 # Function to fetch songs for voting
 def fetch_songs_for_voting(event_id, round_id=None):
     """
-    Fetches all distinct songs assigned to a given event and round for the voting page.
+    Fetches all songs assigned to a given event and round for the voting page.
+    If round_id is None, it fetches songs for single-round events.
     """
     conn = sqlite3.connect(DATABASE)
     c = conn.cursor()
 
     if round_id:
+        # Fetch songs for the specific round in a multi-round event
         c.execute('''
-            SELECT DISTINCT songs.id, songs.title, songs.artist 
-            FROM songs
-            JOIN event_songs ON songs.id = event_songs.song_id
-            WHERE event_songs.event_id = ? AND event_songs.round_id = ?
+            SELECT DISTINCT songs.id, songs.title, songs.artist
+            FROM event_songs
+            JOIN songs ON event_songs.song_id = songs.id
+            WHERE event_songs.event_id = ? AND event_songs.round_id = ? AND event_songs.played = 0
         ''', (event_id, round_id))
     else:
+        # Fetch all songs for a single-round event (no round_id filtering)
         c.execute('''
-            SELECT DISTINCT songs.id, songs.title, songs.artist 
+            SELECT DISTINCT songs.id, songs.title, songs.artist
             FROM songs
             JOIN event_songs ON songs.id = event_songs.song_id
-            WHERE event_songs.event_id = ?
+            WHERE event_songs.event_id = ? AND event_songs.played = 0
         ''', (event_id,))
 
     songs = c.fetchall()
     conn.close()
-    return songs  # Return only assigned songs
+    return songs
 
 def display_song_selection(songs, max_selection=5):
     """
@@ -297,4 +320,36 @@ def mark_song_as_played(event_id, song_id):
     ''', (event_id, song_id))
     
     conn.commit()
+    conn.close()
+
+def show_songs_per_round(event_id):
+    """Display songs assigned to each round of the event."""
+    conn = sqlite3.connect(DATABASE)
+    c = conn.cursor()
+
+    # Fetch the number of rounds for the event
+    c.execute("SELECT round_count FROM events WHERE id = ?", (event_id,))
+    round_count = c.fetchone()[0]
+
+    st.subheader(f":loop: Songs assigned to each round", divider=True)
+
+    # Loop through each round and display songs assigned to that round
+    for round_id in range(1, round_count + 1):
+        st.write(f"**Round {round_id}:**")
+        
+        # Fetch songs assigned to this specific round
+        c.execute('''
+            SELECT s.title, s.artist
+            FROM songs s
+            JOIN event_songs es ON s.id = es.song_id
+            WHERE es.event_id = ? AND es.round_id = ? AND es.played = 0
+        ''', (event_id, round_id))
+        songs = c.fetchall()
+
+        if songs:
+            for title, artist in songs:
+                st.write(f"- {title} by {artist}")
+        else:
+            st.write("No songs assigned to this round.")
+
     conn.close()
