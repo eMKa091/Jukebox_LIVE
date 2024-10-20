@@ -4,34 +4,40 @@ import sqlite3
 from database import (add_song, get_event_name, assign_song_to_event, remove_song_from_event, get_songs_for_event)
 DATABASE = 'votes.db'
 
-#############################
-# SONG MANAGEMENT FUNCTIONS #
-#############################
 def upload_songs_csv():
     st.divider()
     st.subheader("Upload new song list (CSV)")
 
     # CSV Upload
     uploaded_file = st.file_uploader("Choose a CSV file", type="csv")
+
+    # Initialize session state for storing the uploaded data
+    if 'uploaded_songs' not in st.session_state:
+        st.session_state['uploaded_songs'] = []  # Empty list initially
+
     if uploaded_file is not None:
         try:
             df = pd.read_csv(uploaded_file)
             if 'Author' in df.columns and 'Song' in df.columns:
                 added_count = 0
                 skipped_count = 0
-                
+                uploaded_songs = []
+
                 for _, row in df.iterrows():
                     title = row['Song']
                     artist = row['Author']
-                    
+
                     # Try to add the song, if it's not a duplicate
                     if add_song(title, artist):
                         added_count += 1
+                        uploaded_songs.append((title, artist))  # Store added songs
                     else:
                         skipped_count += 1
 
-                st.success(f"Uploaded {added_count} songs successfully.")
-                
+                st.session_state['uploaded_songs'] = uploaded_songs  # Save uploaded songs to session
+
+                st.success(f"Uploaded {added_count} songs successfully, please save to DB.")
+
                 if skipped_count > 0:
                     st.info(f"Skipped {skipped_count} duplicates.")
             else:
@@ -39,7 +45,6 @@ def upload_songs_csv():
         except Exception as e:
             st.error(f"Error processing the file: {e}")
 
-# Song Management Section for a specific event and round
 def song_management(event_id, round_id):
     event_name = get_event_name(event_id)
     
@@ -141,7 +146,20 @@ def song_management(event_id, round_id):
                 for song_id in selected_songs_as_played:
                     mark_song_as_played(event_id, song_id)
                 st.success(f"Marked {len(selected_songs_as_played)} song(s) as played for round {round_id}.")
-        
+
+        ###########################
+        #  Prepare another round  #
+        ###########################
+        st.write("")
+        st.subheader(":female-mechanic: Another round settings",divider=True)
+        st.warning("Press below button only if you marked already played songs")
+        if st.button("Assign remaining songs to another round"):
+            assign_remaining_songs_to_next_round(event_id, round_id)
+            st.rerun()
+
+        ######################################
+        #  Show overview of songs per round  #
+        ######################################
         st.write("")
         show_songs_per_round(event_id)
 
@@ -153,10 +171,6 @@ def check_songs_exist():
     conn.close()
     return count > 0
 
-#############################
-# DATABASE BACKUP FUNCTIONS #
-#############################
-# Export votes to CSV
 def export_votes_to_csv():
     conn = sqlite3.connect(DATABASE)
     df_votes = pd.read_sql_query("SELECT * FROM votes", conn)
@@ -166,7 +180,6 @@ def export_votes_to_csv():
     csv = df_votes.to_csv(index=False)
     st.download_button("Download Votes CSV", data=csv, file_name="votes_backup.csv", mime="text/csv")
 
-# Export songs to CSV
 def export_songs_to_csv():
     conn = sqlite3.connect(DATABASE)
     
@@ -178,7 +191,6 @@ def export_songs_to_csv():
     csv = df_songs.to_csv(index=False)
     st.download_button("Download Songs CSV", data=csv, file_name="songs_backup.csv", mime="text/csv")
 
-# Function to fetch songs for voting
 def fetch_songs_for_voting(event_id, round_id=None):
     """
     Fetches all songs assigned to a given event and round for the voting page.
@@ -323,6 +335,7 @@ def mark_song_as_played(event_id, song_id):
     conn.close()
 
 def show_songs_per_round(event_id):
+
     """Display songs assigned to each round of the event."""
     conn = sqlite3.connect(DATABASE)
     c = conn.cursor()
@@ -351,5 +364,42 @@ def show_songs_per_round(event_id):
                 st.write(f"- {title} by {artist}")
         else:
             st.write("No songs assigned to this round.")
+
+    conn.close()
+
+def assign_remaining_songs_to_next_round(event_id, current_round_id):
+    """
+    Assign remaining songs (event songs - played) to the next round.
+    """
+    conn = sqlite3.connect(DATABASE)
+    c = conn.cursor()
+
+    # 1. Fetch all songs assigned to the event (excluding played songs)
+    c.execute('''
+        SELECT song_id 
+        FROM event_songs
+        WHERE event_id = ? AND played = 0 AND round_id <= ?
+    ''', (event_id, current_round_id))
+    remaining_songs = [song[0] for song in c.fetchall()]  # Song IDs of all songs that are not played
+
+    if remaining_songs:
+        next_round_id = current_round_id + 1
+
+        # 2. Assign remaining songs to the next round
+        for song_id in remaining_songs:
+            # Check if the song is already assigned to the next round
+            c.execute('''
+                SELECT COUNT(*) FROM event_songs WHERE event_id = ? AND song_id = ? AND round_id = ?
+            ''', (event_id, song_id, next_round_id))
+            if c.fetchone()[0] == 0:  # Only insert if not already assigned
+                c.execute('''
+                    INSERT INTO event_songs (event_id, song_id, round_id)
+                    VALUES (?, ?, ?)
+                ''', (event_id, song_id, next_round_id))
+
+        conn.commit()
+        st.success(f"{len(remaining_songs)} remaining song(s) assigned to Round {next_round_id}.")
+    else:
+        st.warning("No remaining songs to assign.")
 
     conn.close()

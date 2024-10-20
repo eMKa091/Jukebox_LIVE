@@ -40,13 +40,17 @@ def admin_page():
 
         if song_count == 0:
             # Step 2: If no entries, display a warning
-            st.warning("The 'songs' table has no entries!")
-            st.info("Please upload songs you can play :)")
+            st.info("Please upload songs you can play first :)")
             
             # Upload new song list
             upload_songs_csv()
+            if st.button("Add to DB (only refreshes page in reality"):
+                st.rerun()
             
         else:
+            if st.button("Delete all songs from DB"):
+                remove_all_songs()
+                st.rerun()
             # Step 3: If there are entries, display the content
             c.execute('SELECT id, title, artist FROM songs')
             rows = c.fetchall()
@@ -66,9 +70,9 @@ def admin_page():
             else:
                 st.warning("No songs found in the database.")
             
-            st.divider()
-            st.subheader("Want more songs?")
             upload_songs_csv()
+            if st.button("Add to DB (only refreshes page in reality"):
+                st.rerun()
 
 ####################
 # EVENT MANAGEMENT #

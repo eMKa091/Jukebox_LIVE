@@ -437,6 +437,20 @@ def stop_voting(event_id, round_id):
     conn.commit()
     conn.close()
 
+def remove_all_songs():
+    """
+    Remove all songs from the 'songs' table.
+    """
+    conn = sqlite3.connect(DATABASE)
+    c = conn.cursor()
+
+    # Execute SQL to delete all rows in the songs table
+    c.execute('DELETE FROM songs')
+
+    # Commit changes and close the connection
+    conn.commit()
+    conn.close()
+
 # Initialize the database when this module is run
 if __name__ == "__main__":
     init_db()
