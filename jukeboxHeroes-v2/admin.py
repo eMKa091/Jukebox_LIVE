@@ -127,6 +127,8 @@ def admin_page():
             else:
                 round_id = st.selectbox("Select Round", list(range(1, round_count + 1)))
 
+            song_management(event_id_selected, round_id)
+
             # Expandable list of songs for the event/round
             st.subheader("Songs Assigned to Event")
             conn = sqlite3.connect(DATABASE)

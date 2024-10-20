@@ -284,3 +284,17 @@ def add_all_songs_to_event(event_id, round_id=None):
                 ''', (event_id, song_id, round_id))
 
         conn.commit()
+
+def mark_song_as_played(event_id, song_id):
+    conn = sqlite3.connect(DATABASE)
+    c = conn.cursor()
+    
+    # Mark the song as played for the given event
+    c.execute('''
+        UPDATE event_songs
+        SET played = 1
+        WHERE event_id = ? AND song_id = ?
+    ''', (event_id, song_id))
+    
+    conn.commit()
+    conn.close()

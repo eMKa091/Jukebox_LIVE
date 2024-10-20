@@ -14,9 +14,9 @@ def init_db():
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             name TEXT,
             date TEXT,
-            round_count INTEGER,
-            current_round INTEGER,
-            voting_active BOOLEAN  
+            round_count INTEGER DEFAULT 1,
+            current_round INTEGER DEFAULT 1,
+            voting_active BOOLEAN DEFAULT 0  
         )
     ''')
 
@@ -91,6 +91,7 @@ def init_db():
             event_id INTEGER,
             song_id INTEGER,
             round_id INTEGER,
+            played BOOLEAN DEFAULT 0,
             PRIMARY KEY (event_id, song_id, round_id),
             FOREIGN KEY (event_id) REFERENCES events(id),
             FOREIGN KEY (song_id) REFERENCES songs(id)
