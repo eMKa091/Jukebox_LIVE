@@ -133,14 +133,13 @@ def admin_page():
             round_count = c.fetchone()[0]
             conn.close()
 
-            # Round selection - Remove "None" for single-round events
-            if round_count == 1:
-                round_id = 1  # Automatically select Round 1 if it's a single-round event
-            else:
-                round_id = st.selectbox("Select Round", list(range(1, round_count + 1)))
+            # Use session state to manage the round
+            if 'round_id' not in st.session_state:
+                st.session_state['round_id'] = 1  # Default to round 1
 
-            song_management(event_id_selected, round_id)
-        
+            # Call the song_management function with event_id and round_id
+            song_management(event_id_selected, st.session_state['round_id'])
+            
         else:
             st.subheader(":flashlight: Please create an event first")
 ##################

@@ -55,13 +55,19 @@ def song_management(event_id, round_id):
     round_count = c.fetchone()[0]
     conn.close()
 
+    # Use session state to track the current round
+    if 'round_id' not in st.session_state:
+        st.session_state['round_id'] = round_id  # Initialize with the provided round_id
+
+    current_round_id = st.session_state['round_id']
+
     st.divider()
 
     # Case 1: Single-round event
     if round_count == 1:
         st.info("All songs from master DB were assigned by default, hence you can only remove songs below!")
         st.divider()
-        
+
         conn = sqlite3.connect(DATABASE)
         # Fetch all songs assigned to this event (no round_id filtering since it's a single-round event)
         df_event_songs = pd.read_sql_query(
@@ -94,6 +100,8 @@ def song_management(event_id, round_id):
 
     # Case 2: Multi-round event
     else:
+        st.subheader(f":male-mechanic: Manage songs for round {current_round_id}", divider=True)
+
         # Fetch songs assigned to this specific round
         conn = sqlite3.connect(DATABASE)
         df_event_songs = pd.read_sql_query(
@@ -103,17 +111,17 @@ def song_management(event_id, round_id):
             JOIN event_songs es ON s.id = es.song_id 
             WHERE es.event_id = ? AND es.round_id = ? AND es.played = 0
             """,
-            conn, params=(event_id, round_id)
+            conn, params=(event_id, current_round_id)
         )
         conn.close()
-        
-        st.subheader(f":male-mechanic: Manage songs for round {round_id}", divider=True)
+
         col1, col2 = st.columns(2)
+
+        ###############################
+        # Remove songs that the band will play anyway #
+        ###############################
         with col1:
             st.write("")                   
-            ###############################################
-            # Remove songs that the band will play anyway #
-            ###############################################
             if not df_event_songs.empty:
                 selected_songs_to_remove = st.multiselect(
                     ":x: Remove from round:", 
@@ -125,16 +133,16 @@ def song_management(event_id, round_id):
                 if st.button("Remove selected songs from round"):
                     for song_id in selected_songs_to_remove:
                         remove_song_from_event(event_id, song_id)
-                    st.success(f"Removed selected songs from round {round_id}.")
+                    st.success(f"Removed selected songs from round {current_round_id}.")
                     st.rerun()
             else:
-                st.write(f"No songs are assigned to round {round_id}.")
+                st.write(f"No songs are assigned to round {current_round_id}.")
 
+        ########################################
+        #  Mark played songs in current round  #
+        ########################################
         with col2:
             st.write("")
-            ########################################
-            #  Mark played songs in current round  #
-            ########################################
             selected_songs_as_played = st.multiselect(
                 ":white_check_mark: Mark as played:", 
                 options=df_event_songs['id'].tolist(), 
@@ -145,17 +153,25 @@ def song_management(event_id, round_id):
             if st.button("Mark selected songs as played"):
                 for song_id in selected_songs_as_played:
                     mark_song_as_played(event_id, song_id)
-                st.success(f"Marked {len(selected_songs_as_played)} song(s) as played for round {round_id}.")
+                st.success(f"Marked {len(selected_songs_as_played)} song(s) as played for round {current_round_id}.")
+                st.rerun()
 
         ###########################
         #  Prepare another round  #
         ###########################
         st.write("")
-        st.subheader(":female-mechanic: Another round settings",divider=True)
+        st.subheader(":female-mechanic: Another round settings", divider=True)
         st.warning("Press below button only if you marked already played songs")
+
         if st.button("Assign remaining songs to another round"):
-            assign_remaining_songs_to_next_round(event_id, round_id)
-            st.rerun()
+            assign_remaining_songs_to_next_round(event_id, current_round_id)
+
+            # Move to the next round if available
+            if current_round_id < round_count:
+                st.session_state['round_id'] = current_round_id + 1  # Shift to the next round
+                st.rerun()
+            else:
+                st.success(f"All rounds for event '{event_name}' have been managed.")
 
         ######################################
         #  Show overview of songs per round  #
