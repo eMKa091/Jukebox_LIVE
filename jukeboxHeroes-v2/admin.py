@@ -1,5 +1,6 @@
 import streamlit as st
 import sqlite3
+import time
 from database import *
 from song_control import *
 from voting_control import *
@@ -52,9 +53,6 @@ def admin_page():
                     st.rerun()
                 
             else:
-                if st.button("Delete all songs from DB"):
-                    remove_all_songs()
-                    st.rerun()
                 # Step 3: If there are entries, display the content
                 c.execute('SELECT id, title, artist FROM songs')
                 rows = c.fetchall()
@@ -73,6 +71,12 @@ def admin_page():
                             st.write(f"**Artist**: {artist}")
                 else:
                     st.warning("No songs found in the database.")
+
+                st.divider()    
+                st.warning(":warning: Do not delete songs if you have any events to manage")
+                if st.button("Delete all songs from DB"):
+                    remove_all_songs()
+                    st.rerun()
                 
                 upload_songs_csv()
                 if st.button("Add to DB (only refreshes page in reality"):
@@ -91,26 +95,32 @@ def admin_page():
             
             if songs_exist:
                 # Event creation form
-                st.subheader(":new: Create New Event", divider=True)
+                st.subheader(":new: Create new event", divider=True)
                 with st.form(key='create_event_form'):
-                    new_event_name = st.text_input("Event Name")
-                    new_event_date = st.date_input("Event Date")
-                    new_event_rounds = st.number_input("Number of Rounds", min_value=1, max_value=10, value=1)
-                    create_event_button = st.form_submit_button("Create Event")
+                    new_event_name = st.text_input("Event name")
+                    new_event_date = st.date_input("Event date")
+                    new_event_rounds = st.number_input("Number of rounds", min_value=1, max_value=10, value=1)
+                    create_event_button = st.form_submit_button("Create event")
+                    container = st.empty()
 
                     if create_event_button and new_event_name and new_event_date:
                         event_id = create_event(new_event_name, str(new_event_date), new_event_rounds)
-                        st.success(f"Event '{new_event_name}' created with ID {event_id}")
-                        
+                        container.success(f"Event '{new_event_name}' created with ID {event_id}")
+                        time.sleep(2)
+                        container.empty()
+
                         if new_event_rounds == 1:
                         # Add all songs to the event
                             add_all_songs_to_event(event_id)
-                            st.success(f"All songs assigned to event by default.")
-                        
+                            container.success(f"All songs assigned to event by default.")
+                            time.sleep(2)
+                            container.empty()
                         else:
                             round_id = 1
                             add_all_songs_to_event(event_id, round_id)
-                            st.success(f"All songs assigned to first round by default.")
+                            container.success(f"All songs assigned to first round by default.")
+                            time.sleep(2)
+                            container.empty()
                         
                         # Reload events after creation
                         events = load_events()
@@ -130,6 +140,7 @@ def admin_page():
                 for event_id, event_name in events:
                     if st.button(f"Delete event '{event_name}'", key=f"delete_{event_id}"):
                         delete_event(event_id)
+                        time.sleep(2)
                         st.rerun()
 
 
