@@ -1,7 +1,7 @@
 import streamlit as st
 import pandas as pd
 import sqlite3
-from database import (add_song, get_event_name, remove_song_from_event, get_all_event_songs, get_removed_event_songs, add_song_back_to_event)
+from database import *
 DATABASE = 'votes.db'
 
 def upload_songs_csv():
@@ -96,7 +96,7 @@ def song_management(event_id, round_id):
 
                 if st.button("Add back selected songs"):
                     for song_id in selected_songs_to_add_back:
-                        add_song_back_to_event(event_id, song_id)
+                        add_song_back_to_event_single(event_id, song_id)
                     st.success(f"Added back selected songs to event '{event_name}'.")
                     st.rerun()  # Refresh the page to update the lists after adding back songs
 
@@ -108,17 +108,8 @@ def song_management(event_id, round_id):
         st.subheader(f":male-mechanic: Round {current_round_id}", divider=True)
 
         # Fetch songs assigned to this specific round
-        conn = sqlite3.connect(DATABASE)
-        df_event_songs = pd.read_sql_query(
-            """
-            SELECT s.id, s.title, s.artist 
-            FROM songs s 
-            JOIN event_songs es ON s.id = es.song_id 
-            WHERE es.event_id = ? AND es.round_id = ? AND es.played = 0 AND removed = 0
-            """,
-            conn, params=(event_id, current_round_id)
-        )
-        conn.close()
+        df_event_songs = get_all_event_songs_for_round(event_id, current_round_id)  # Fetch assigned songs
+        df_removed_event_songs = get_removed_event_songs_for_round(event_id, current_round_id)  # Fetch removed songs
 
         col1, col2 = st.columns(2)
 
@@ -126,7 +117,7 @@ def song_management(event_id, round_id):
         # Remove songs that the band will play anyway #
         ###############################################
         with col1:
-            st.write("")                   
+            st.write("")
             if not df_event_songs.empty:
                 selected_songs_to_remove = st.multiselect(
                     ":x: Remove from round:", 
@@ -144,28 +135,45 @@ def song_management(event_id, round_id):
                 st.write(f"No songs are assigned to round {current_round_id}.")
 
         ########################################
-        #  Mark played songs in current round  #
+        #  Add back previously removed songs   #
         ########################################
         with col2:
             st.write("")
-            selected_songs_as_played = st.multiselect(
-                ":white_check_mark: Mark as played:", 
-                options=df_event_songs['id'].tolist(), 
-                format_func=lambda x: f"{df_event_songs[df_event_songs['id'] == x]['title'].values[0]} by {df_event_songs[df_event_songs['id'] == x]['artist'].values[0]}",
-                key=f"mark_songs_as_played_multiselect_{event_id}_{current_round_id}"
-            )
+            if not df_removed_event_songs.empty:
+                selected_songs_to_add_back = st.multiselect(
+                    ":arrow_backward: Add back previously removed songs:", 
+                    options=df_removed_event_songs['id'].tolist(), 
+                    format_func=lambda x: f"{df_removed_event_songs[df_removed_event_songs['id'] == x]['title'].values[0]} by {df_removed_event_songs[df_removed_event_songs['id'] == x]['artist'].values[0]}",
+                    key=f"add_back_songs_multiselect_{event_id}_{current_round_id}"
+                )
 
-            if st.button("Mark selected songs as played", key=f"mark_selected_songs_{event_id}_{current_round_id}"):
-                for song_id in selected_songs_as_played:
-                    mark_song_as_played(event_id, song_id)
-                st.success(f"Marked {len(selected_songs_as_played)} song(s) as played for round {current_round_id}.")
-                st.rerun()
+                if st.button("Add back selected songs", key=f"add_back_songs_{event_id}_{current_round_id}"):
+                    for song_id in selected_songs_to_add_back:
+                        add_song_back_to_event(event_id, song_id, current_round_id)
+                    st.success(f"Added back selected songs to round {current_round_id}.")
+                    st.rerun()
+
+        ########################################
+        #  Mark played songs in current round  #
+        ########################################
+        selected_songs_as_played = st.multiselect(
+            ":white_check_mark: Mark as played:", 
+            options=df_event_songs['id'].tolist(), 
+            format_func=lambda x: f"{df_event_songs[df_event_songs['id'] == x]['title'].values[0]} by {df_event_songs[df_event_songs['id'] == x]['artist'].values[0]}",
+            key=f"mark_songs_as_played_multiselect_{event_id}_{current_round_id}"
+        )
+
+        if st.button("Mark selected songs as played", key=f"mark_selected_songs_{event_id}_{current_round_id}"):
+            for song_id in selected_songs_as_played:
+                mark_song_as_played(event_id, song_id)
+            st.success(f"Marked {len(selected_songs_as_played)} song(s) as played for round {current_round_id}.")
+            st.rerun()
 
         ###########################
         #  Prepare another round  #
         ###########################
         st.write("")
-        st.subheader(":female-mechanic: Next round", divider=True)
+        st.subheader(":female-mechanic: Next round settings", divider=True)
         st.warning("Press below button only if you marked already played songs")
 
         if st.button("Assign remaining songs to another round", key=f"assign_songs_{event_id}_{current_round_id}"):
