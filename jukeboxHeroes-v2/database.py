@@ -1,5 +1,6 @@
 import sqlite3
 import streamlit as st
+import pandas as pd
 from hashlib import sha256
 
 DATABASE = 'votes.db'
@@ -275,10 +276,13 @@ def update_song(song_id, title, artist):
     conn.close()
 
 def remove_song_from_event(event_id, song_id):
-    """Remove a song from an event."""
     conn = sqlite3.connect(DATABASE)
     c = conn.cursor()
-    c.execute("DELETE FROM event_songs WHERE event_id = ? AND song_id = ?", (event_id, song_id))
+    c.execute('''
+        UPDATE event_songs
+        SET removed = 1
+        WHERE event_id = ? AND song_id = ?
+    ''', (event_id, song_id))
     conn.commit()
     conn.close()
 
@@ -411,6 +415,48 @@ def remove_all_songs():
     c.execute('DELETE FROM songs')
 
     # Commit changes and close the connection
+    conn.commit()
+    conn.close()
+
+def get_all_event_songs(event_id):
+    conn = sqlite3.connect(DATABASE)
+    df_event_songs = pd.read_sql_query(
+        """
+        SELECT s.id, s.title, s.artist 
+        FROM songs s 
+        JOIN event_songs es ON s.id = es.song_id 
+        WHERE es.event_id = ? AND es.played = 0 AND es.removed = 0
+        """, conn, params=(event_id,)
+    )
+    conn.close()
+    return df_event_songs
+
+def get_removed_event_songs(event_id):
+    conn = sqlite3.connect(DATABASE)
+    df_removed_event_songs = pd.read_sql_query(
+        """
+        SELECT s.id, s.title, s.artist 
+        FROM songs s 
+        JOIN event_songs es ON s.id = es.song_id 
+        WHERE es.event_id = ? AND es.played = 0 AND es.removed = 1
+        """, conn, params=(event_id,)
+    )
+    conn.close()
+    return df_removed_event_songs
+
+def add_song_back_to_event(event_id, song_id):
+    conn = sqlite3.connect(DATABASE)
+    c = conn.cursor()
+
+    # Update the `removed` field to 0 to add the song back
+    c.execute(
+        """
+        UPDATE event_songs
+        SET removed = 0
+        WHERE event_id = ? AND song_id = ?
+        """, (event_id, song_id)
+    )
+
     conn.commit()
     conn.close()
 

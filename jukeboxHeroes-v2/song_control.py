@@ -1,7 +1,7 @@
 import streamlit as st
 import pandas as pd
 import sqlite3
-from database import (add_song, get_event_name, remove_song_from_event)
+from database import (add_song, get_event_name, remove_song_from_event, get_all_event_songs, get_removed_event_songs, add_song_back_to_event)
 DATABASE = 'votes.db'
 
 def upload_songs_csv():
@@ -65,20 +65,12 @@ def song_management(event_id, round_id):
 
     # Case 1: Single-round event
     if round_count == 1:
-        st.info("All songs from master DB were assigned by default, hence you can only remove songs below!")
+        st.info("All songs from master DB were assigned by default")
         st.divider()
 
-        conn = sqlite3.connect(DATABASE)
-        df_event_songs = pd.read_sql_query(
-            """
-            SELECT s.id, s.title, s.artist 
-            FROM songs s 
-            JOIN event_songs es ON s.id = es.song_id 
-            WHERE es.event_id = ? AND es.played = 0
-            """, 
-            conn, params=(event_id,)
-        )
-        conn.close()
+        # Get all songs and removed songs
+        df_event_songs = get_all_event_songs(event_id)
+        df_removed_event_songs_single = get_removed_event_songs(event_id)
 
         if not df_event_songs.empty:
             selected_songs_to_remove = st.multiselect(
@@ -92,10 +84,22 @@ def song_management(event_id, round_id):
                 for song_id in selected_songs_to_remove:
                     remove_song_from_event(event_id, song_id)
                 st.success(f"Removed selected songs from event '{event_name}'.")
+                st.rerun()  # Refresh the page to update the lists after removing songs
 
-            if st.button("Remove All Songs from Event"):
-                remove_all_songs_from_event(event_id)
-                st.success(f"All songs removed from event '{event_name}'.")
+            if not df_removed_event_songs_single.empty:
+                selected_songs_to_add_back = st.multiselect(
+                    ":arrow_backward: Add back previously removed songs:", 
+                    options=df_removed_event_songs_single['id'].tolist(), 
+                    format_func=lambda x: f"{df_removed_event_songs_single[df_removed_event_songs_single['id'] == x]['title'].values[0]} by {df_removed_event_songs_single[df_removed_event_songs_single['id'] == x]['artist'].values[0]}",
+                    key=f"add_back_songs_multiselect_{event_id}"
+                )
+
+                if st.button("Add back selected songs"):
+                    for song_id in selected_songs_to_add_back:
+                        add_song_back_to_event(event_id, song_id)
+                    st.success(f"Added back selected songs to event '{event_name}'.")
+                    st.rerun()  # Refresh the page to update the lists after adding back songs
+
         else:
             st.write(f"No songs found for event ID {event_id}")
 
@@ -110,7 +114,7 @@ def song_management(event_id, round_id):
             SELECT s.id, s.title, s.artist 
             FROM songs s 
             JOIN event_songs es ON s.id = es.song_id 
-            WHERE es.event_id = ? AND es.round_id = ? AND es.played = 0
+            WHERE es.event_id = ? AND es.round_id = ? AND es.played = 0 AND removed = 0
             """,
             conn, params=(event_id, current_round_id)
         )
@@ -180,7 +184,6 @@ def song_management(event_id, round_id):
         st.write("")
         show_songs_per_round(event_id)
 
-
 def check_songs_exist():
     conn = sqlite3.connect(DATABASE)
     c = conn.cursor()
@@ -223,7 +226,7 @@ def fetch_songs_for_voting(event_id, round_id=None):
             SELECT DISTINCT songs.id, songs.title, songs.artist
             FROM event_songs
             JOIN songs ON event_songs.song_id = songs.id
-            WHERE event_songs.event_id = ? AND event_songs.round_id = ? AND event_songs.played = 0
+            WHERE event_songs.event_id = ? AND event_songs.round_id = ? AND event_songs.played = 0 AND event_songs.removed = 0
         ''', (event_id, round_id))
     else:
         # Fetch all songs for a single-round event (no round_id filtering)
@@ -231,7 +234,7 @@ def fetch_songs_for_voting(event_id, round_id=None):
             SELECT DISTINCT songs.id, songs.title, songs.artist
             FROM songs
             JOIN event_songs ON songs.id = event_songs.song_id
-            WHERE event_songs.event_id = ? AND event_songs.played = 0
+            WHERE event_songs.event_id = ? AND event_songs.played = 0 AND event_songs.removed = 0
         ''', (event_id,))
 
     songs = c.fetchall()
@@ -372,7 +375,7 @@ def show_songs_per_round(event_id):
                 SELECT s.title, s.artist
                 FROM songs s
                 JOIN event_songs es ON s.id = es.song_id
-                WHERE es.event_id = ? AND es.round_id = ? AND es.played = 0
+                WHERE es.event_id = ? AND es.round_id = ? AND es.played = 0 AND es.removed = 0
             ''', (event_id, round_id))
             songs = c.fetchall()
 
@@ -395,7 +398,7 @@ def assign_remaining_songs_to_next_round(event_id, current_round_id):
     c.execute('''
         SELECT song_id 
         FROM event_songs
-        WHERE event_id = ? AND played = 0 AND round_id <= ?
+        WHERE event_id = ? AND played = 0 AND removed = 0 AND round_id <= ?
     ''', (event_id, current_round_id))
     remaining_songs = [song[0] for song in c.fetchall()]  # Song IDs of all songs that are not played
 
@@ -406,7 +409,7 @@ def assign_remaining_songs_to_next_round(event_id, current_round_id):
         for song_id in remaining_songs:
             # Check if the song is already assigned to the next round
             c.execute('''
-                SELECT COUNT(*) FROM event_songs WHERE event_id = ? AND song_id = ? AND round_id = ?
+                SELECT COUNT(*) FROM event_songs WHERE event_id = ? AND song_id = ? AND round_id = ? AND removed = 0
             ''', (event_id, song_id, next_round_id))
             if c.fetchone()[0] == 0:  # Only insert if not already assigned
                 c.execute('''
