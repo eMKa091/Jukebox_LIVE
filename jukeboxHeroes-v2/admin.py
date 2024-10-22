@@ -178,7 +178,7 @@ def admin_page():
             
             if events:
                 st.subheader(":wrench: Manage voting", divider=True)
-                event_name_selected = st.selectbox("Select Event for Voting", [e[1] for e in events])
+                event_name_selected = st.selectbox("Select event for voting", [e[1] for e in events])
                 event_id_selected = [e[0] for e in events if e[1] == event_name_selected][0]
                 
                 # Get the number of rounds for this event
@@ -196,12 +196,12 @@ def admin_page():
                 
                 # Voting control buttons - only show one based on current voting state
                 if voting_active:
-                    if st.button("Stop Voting"):
+                    if st.button("Stop voting"):
                         stop_voting(event_id_selected, round_id)
                         st.success(f"Voting stopped for event {event_name_selected}, round {round_id}.")
                         st.rerun()
                 else:
-                    if st.button("Start Voting"):
+                    if st.button("Start voting"):
                         start_voting(event_id_selected, round_id)
                         st.success(f"Voting started for event {event_name_selected}, round {round_id}.")
                         st.rerun()
@@ -215,9 +215,9 @@ def admin_page():
             st.subheader(":back: :up: the database")
             
             # Backup functionality (simplified for demonstration purposes)
-            if st.button("Backup Now"):
+            if st.button("Backup now"):
                 with open(DATABASE, "rb") as file:
-                    st.download_button(label="Download Backup", data=file, file_name="votes_backup.db")
+                    st.download_button(label="Download backup", data=file, file_name="votes_backup.db")
 
 ############################
 # NAVIGATION - VOTING PAGE #
