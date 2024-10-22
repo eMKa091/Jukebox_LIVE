@@ -61,8 +61,6 @@ def song_management(event_id, round_id):
 
     current_round_id = st.session_state['round_id']
 
-    st.divider()
-
     # Case 1: Single-round event
     if round_count == 1:
         st.info("All songs from master DB were assigned by default, hence you can only remove songs below!")
@@ -97,7 +95,9 @@ def song_management(event_id, round_id):
             if st.button("Remove All Songs from Event"):
                 remove_all_songs_from_event(event_id)
                 st.success(f"All songs removed from event '{event_name}'.")
-
+        else:
+            st.write(event_id)
+            
     # Case 2: Multi-round event
     else:
         st.subheader(f":male-mechanic: Manage songs for round {current_round_id}", divider=True)

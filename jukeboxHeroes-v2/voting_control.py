@@ -90,6 +90,7 @@ def display_splash_screen(message="No ongoing voting."):
     st.subheader("Neváhejte nás kontaktovat:")
     st.write("📞 +420 608 462 008")
     st.write("✉️ [rudyhorvat77@gmail.com](mailto:rudyhorvat77@gmail.com)")
+    st.image("./img/rudy.png")
     st.divider()
 
 ################################

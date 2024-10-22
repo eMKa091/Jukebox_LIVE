@@ -138,24 +138,6 @@ def create_event(name, date, round_count):
     ''', (name, date, round_count))
     event_id = c.lastrowid
 
-    # Automatically assign all songs from the master list (songs table) to the new event
-    c.execute('SELECT id FROM songs')  # Get all song IDs from the songs table
-    all_songs = c.fetchall()
-
-    for song in all_songs:
-        song_id = song[0]
-        c.execute('''
-            INSERT INTO event_songs (event_id, song_id, round_id)
-            VALUES (?, ?, ?)
-        ''', (event_id, song_id, None))  # Assign to the event without a round by default
-
-    for song in all_songs:
-        song_id = song[0]
-        c.execute('''
-            INSERT INTO event_songs (event_id, song_id, round_id)
-            VALUES (?, ?, ?)
-        ''', (event_id, song_id, 1))  # Assign to the event without a round by default
-
     conn.commit()
     conn.close()
     return event_id
@@ -331,26 +313,6 @@ def delete_event(event_id):
         st.error(f"Error deleting event {event_id}: {e}")
     finally:
         conn.close()
-
-def check_table_schema():
-    conn = sqlite3.connect(DATABASE)
-    c = conn.cursor()
-
-    # Check schema for the votes table
-    c.execute("PRAGMA table_info(votes)")
-    votes_schema = c.fetchall()
-    st.write("Votes Table Schema:")
-    for column in votes_schema:
-        st.write(column)
-
-    # Check schema for the event_songs table
-    c.execute("PRAGMA table_info(event_songs)")
-    event_songs_schema = c.fetchall()
-    st.write("Event Songs Table Schema:")
-    for column in event_songs_schema:
-        st.write(column)
-
-    conn.close()
 
 def get_event_name(event_id):
     """
