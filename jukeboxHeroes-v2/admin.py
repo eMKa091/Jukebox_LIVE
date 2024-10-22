@@ -148,28 +148,24 @@ def admin_page():
 # SONG MANAGEMENT PER EVENT #
 #############################
         elif menu_selection == "Song management for events":
-        
+            
             # Manage event songs
             if events:
                 event_name_selected = st.selectbox("Select Event", [e[1] for e in events])
                 event_id_selected = [e[0] for e in events if e[1] == event_name_selected][0]    
                 
-                # Get number of rounds
-                conn = sqlite3.connect(DATABASE)
-                c = conn.cursor()
-                c.execute("SELECT round_count FROM events WHERE id = ?", (event_id_selected,))
-                round_count = c.fetchone()[0]
-                conn.close()
+                # Use session state to manage the rounds for each event
+                event_round_key = f'round_id_{event_id_selected}'
+                
+                if event_round_key not in st.session_state:
+                    st.session_state[event_round_key] = 1  # Default to round 1 for each event
 
-                # Use session state to manage the rounds
-                if 'round_id' not in st.session_state:
-                    st.session_state['round_id'] = 1  # Default to round 1
-
-                # Call the song_management function with event_id and round_id
-                song_management(event_id_selected, st.session_state['round_id'])
+                # Call the song_management function with the event's specific round_id
+                song_management(event_id_selected, st.session_state[event_round_key])
                 
             else:
                 st.info(":flashlight: Please create an event first")
+
 
 ##################
 # VOTING CONTROL #
