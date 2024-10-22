@@ -92,6 +92,7 @@ def init_db():
             song_id INTEGER,
             round_id INTEGER,
             played BOOLEAN DEFAULT 0,
+            removed BOOLEAN DEFAULT 0,
             PRIMARY KEY (event_id, song_id, round_id),
             FOREIGN KEY (event_id) REFERENCES events(id),
             FOREIGN KEY (song_id) REFERENCES songs(id)

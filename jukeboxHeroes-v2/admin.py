@@ -101,26 +101,22 @@ def admin_page():
                     new_event_date = st.date_input("Event date")
                     new_event_rounds = st.number_input("Number of rounds", min_value=1, max_value=10, value=1)
                     create_event_button = st.form_submit_button("Create event")
-                    container = st.empty()
 
                     if create_event_button and new_event_name and new_event_date:
                         event_id = create_event(new_event_name, str(new_event_date), new_event_rounds)
-                        container.success(f"Event '{new_event_name}' created with ID {event_id}")
-                        time.sleep(2)
-                        container.empty()
+                        st.success(f"Event '{new_event_name}' created with ID {event_id}")
 
                         if new_event_rounds == 1:
                         # Add all songs to the event
                             add_all_songs_to_event(event_id)
-                            container.success(f"All songs assigned to event by default.")
+                            st.success(f"All songs assigned to event by default.")
                             time.sleep(2)
-                            container.empty()
+
                         else:
                             round_id = 1
                             add_all_songs_to_event(event_id, round_id)
-                            container.success(f"All songs assigned to first round by default.")
+                            st.success(f"All songs assigned to first round by default.")
                             time.sleep(2)
-                            container.empty()
                         
                         # Reload events after creation
                         events = load_events()
@@ -140,7 +136,6 @@ def admin_page():
                 for event_id, event_name in events:
                     if st.button(f"Delete event '{event_name}'", key=f"delete_{event_id}"):
                         delete_event(event_id)
-                        time.sleep(2)
                         st.rerun()
 
 
