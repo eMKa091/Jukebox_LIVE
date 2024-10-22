@@ -1,7 +1,7 @@
 import streamlit as st
 import pandas as pd
 import sqlite3
-from database import (add_song, get_event_name, assign_song_to_event, remove_song_from_event, get_songs_for_event)
+from database import (add_song, get_event_name, remove_song_from_event)
 DATABASE = 'votes.db'
 
 def upload_songs_csv():
@@ -101,7 +101,7 @@ def song_management(event_id, round_id):
 
     # Case 2: Multi-round event
     else:
-        st.subheader(f":male-mechanic: Manage songs for round {current_round_id}", divider=True)
+        st.subheader(f":male-mechanic: Round {current_round_id}", divider=True)
 
         # Fetch songs assigned to this specific round
         conn = sqlite3.connect(DATABASE)
@@ -161,7 +161,7 @@ def song_management(event_id, round_id):
         #  Prepare another round  #
         ###########################
         st.write("")
-        st.subheader(":female-mechanic: Another round settings", divider=True)
+        st.subheader(":female-mechanic: Next round", divider=True)
         st.warning("Press below button only if you marked already played songs")
 
         if st.button("Assign remaining songs to another round", key=f"assign_songs_{event_id}_{current_round_id}"):
