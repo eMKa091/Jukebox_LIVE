@@ -364,8 +364,7 @@ def mark_song_as_played(event_id, song_id):
     conn.close()
 
 def show_songs_per_round(event_id):
-
-    """Display songs assigned to each round of the event."""
+    """Display all songs assigned to each round of the event, with status icons and sorting."""
     conn = sqlite3.connect(DATABASE)
     c = conn.cursor()
 
@@ -373,23 +372,46 @@ def show_songs_per_round(event_id):
     c.execute("SELECT round_count FROM events WHERE id = ?", (event_id,))
     round_count = c.fetchone()[0]
 
-    st.subheader(f":loop: Songs assigned to each round", divider=True)
+    st.subheader(f":loop: Songs overview per round", divider=True)
 
+    # Legend for the icons
+    legend = """
+    :x: Removed  
+    :white_check_mark: Played  
+    :musical_note: Available for voting
+    """
+    
+    st.text("Legend")
+    st.markdown(legend)
+    st.divider()
+    
     # Loop through each round and display songs assigned to that round
     for round_id in range(1, round_count + 1):
         with st.expander(f"Round {round_id}", expanded=False):
-            # Fetch songs assigned to this specific round
+            # Fetch all songs for this round, including played, removed, and available for voting
             c.execute('''
-                SELECT s.title, s.artist
+                SELECT s.title, s.artist, es.played, es.removed
                 FROM songs s
                 JOIN event_songs es ON s.id = es.song_id
-                WHERE es.event_id = ? AND es.round_id = ? AND es.played = 0 AND es.removed = 0
+                WHERE es.event_id = ? AND es.round_id = ?
             ''', (event_id, round_id))
             songs = c.fetchall()
 
             if songs:
-                for title, artist in songs:
-                    st.write(f"- {title} by {artist}")
+                # Sort songs: removed first, played next, then available
+                sorted_songs = sorted(songs, key=lambda x: (x[3], x[2]))  # Sort by `removed` then by `played`
+
+                # Display the sorted songs with appropriate icons
+                for title, artist, played, removed in sorted_songs:
+                    if removed:
+                        status_icon = ":x:"  # Removed icon
+                    elif played:
+                        status_icon = ":white_check_mark:"  # Played icon
+                    else:
+                        status_icon = ":musical_note:"  # Available for voting
+
+                    # Display the song with the icon
+                    st.write(f"{status_icon} {title} by {artist}")
             else:
                 st.write("No songs assigned to this round.")
 

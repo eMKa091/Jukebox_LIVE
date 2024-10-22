@@ -7,7 +7,8 @@
             FROM songs s 
             JOIN event_songs es ON s.id = es.song_id 
             WHERE es.event_id = ? AND es.played = 0
-
+            
+- [ ]   !! When page is refreshed, st.session state is lost and that means reset to round 1 on song mgmgt.
 - [x]   Introduce another column "removed" BOOLEAN - change DB schema, change all fucking functions.
 - [ ]   Make list (color coded or delimited in other way) of songs for the event and rounds.
 - [ ]   Introduce "limiter" to number of songs.
