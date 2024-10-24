@@ -179,7 +179,7 @@ def song_management(event_id, round_id):
             #  Prepare another round  #
             ###########################
             #st.subheader(f":female-mechanic: Round {current_round_id+1} settings", divider=True)
-            st.text("Press below button only if you:")
+            st.text("Press the button below only if you:")
             st.write(f":white_check_mark: Marked played songs for round {current_round}")
             st.write(f":white_check_mark: Stopped voting for round {current_round}")
             st.text("")
