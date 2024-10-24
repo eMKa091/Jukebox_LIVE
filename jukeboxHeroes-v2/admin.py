@@ -185,8 +185,6 @@ def admin_page():
                 for i in range(1, round_count + 1):
                     with tabs[i - 1]:
                         if i == current_round:
-                            st.subheader(f":arrow_right: Current Round {i} Voting Control")
-
                             # Show voting control for the current round
                             if voting_active:
                                 if st.button("Stop voting"):
@@ -199,7 +197,6 @@ def admin_page():
                                     c.execute("UPDATE events SET round_status = 'completed' WHERE id = ?", (event_id_selected,))
                                     conn.commit()
                                     conn.close()
-
                                     st.rerun()
 
                             elif round_status == 'completed':
@@ -222,24 +219,31 @@ def admin_page():
                             # Show "Move to Next Round" button after voting has started or stopped
                             if not voting_active or round_status == 'completed':
                                 if current_round < round_count:
-                                    if st.button("Move to Next Round", key=f"next_round_{event_id_selected}_{current_round}"):
-                                        next_round = current_round + 1
-                                        # Update the current round and round status in the database
-                                        conn = sqlite3.connect(DATABASE)
-                                        c = conn.cursor()
-                                        c.execute("UPDATE events SET current_round = ?, round_status = 'not_started' WHERE id = ?", (next_round, event_id_selected))
-                                        conn.commit()
-                                        conn.close()
+                                    if round_status == 'completed':
+                                        if st.button("Move to Next Round", key=f"next_round_{event_id_selected}_{current_round}"):
+                                            next_round = current_round + 1
+                                            # Update the current round and round status in the database
+                                            conn = sqlite3.connect(DATABASE)
+                                            c = conn.cursor()
+                                            c.execute("UPDATE events SET current_round = ?, round_status = 'not_started' WHERE id = ?", (next_round, event_id_selected))
+                                            conn.commit()
+                                            conn.close()
 
-                                        st.success(f"Moved to round {next_round} for event '{event_name_selected}'.")
+                                            # Automatically switch to the next round tab
+                                            st.rerun()
 
-                                        # Automatically switch to the next round tab
-                                        st.rerun()
+                            # Mark last round in DB
+                            if current_round == round_count:
+                                conn = sqlite3.connect(DATABASE)
+                                c = conn.cursor()
+                                c.execute("UPDATE events SET last_round = True")
+                                conn.commit()
+                                conn.close()
 
-                            # Show message for final round only when it's completed (i.e., voting stopped for final round)
-                            if current_round == round_count and not voting_active:
-                                st.success(f"All rounds for event '{event_name_selected}' have been completed!")
-                                st.markdown(f":tada: **Event '{event_name_selected}' is complete. No more rounds available.**")
+                                st.info(f"This is the last round")
+                                #st.markdown(f":tada: **Event '{event_name_selected}' is complete. No more rounds available.**")
+
+                            if last_round 
 
                         # Past rounds: Only show that the round is completed
                         elif i < current_round:
