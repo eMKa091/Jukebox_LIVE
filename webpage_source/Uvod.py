@@ -9,7 +9,7 @@ st.header("Aktuálně neprobíhá žádné hlasování.")
 st.divider()
 
 st.subheader("Kdo jsme?")
-st.write("Top party band hrající přes :hundred: světových hitů, převážně r. 2000+,")
+st.write("Top party band hrající přes :100: světových hitů, převážně r. 2000+,")
 st.write("ale také osvědčené pecky ze 60. - 90. let.")
 st.write("")
 st.write(":four: skvělé zpěvačky a zpěváky z POP ACADEMY OSTRAVA doplňuje profi kapela.")
