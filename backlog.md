@@ -9,12 +9,13 @@
             WHERE es.event_id = ? AND es.played = 0
             
 - [ ]   !! When page is refreshed, st.session state is lost and that means reset to round 1 on song mgmgt.
-- [x]   Introduce another column "removed" BOOLEAN - change DB schema, change all fucking functions.
-- [ ]   Make list (color coded or delimited in other way) of songs for the event and rounds.
+- [ ]   Show also date on event details (buttons, etc.)
 - [ ]   Introduce "limiter" to number of songs.
+- [ ]   Band page
+- [x]   Introduce another column "removed" BOOLEAN - change DB schema, change all fucking functions.
+- [x]   Make list (color coded or delimited in other way) of songs for the event and rounds.
 - [x]   Udelej take tlacitko - add (newly added or previously removed) songs to event (= diff if there is additional .csv uploaded)
 - [x]   Remove time delay. 
-- [ ]   Band page
 
 Voting:
 - [ ]   Optimis(z)e voting page for mobile device(s).
