@@ -57,11 +57,6 @@ def song_management(event_id, round_id):
 
     # Use session state to track the current round for this specific event
     event_round_key = f'round_id_{event_id}'
-
-    ##if event_round_key not in st.session_state:
-    #    st.session_state[event_round_key] = current_round
-    #
-    #current_round_id = st.session_state[event_round_key]
     current_round_id = current_round
 
     # Case 1: Single-round event
@@ -174,6 +169,10 @@ def song_management(event_id, round_id):
                     mark_song_as_played(event_id, song_id)
                 st.success(f"Marked {len(selected_songs_as_played)} song(s) as played for round {current_round_id}.")
                 st.rerun()
+            
+            st.divider()
+            st.info("1) Once you are done marking songs as played, visit 'Overview of rounds'")
+            st.info(f"2) If the list of songs looks OK (you see played, removed and available songs), move to 'Next round'")
 
         with tab3:
             ###########################
@@ -202,6 +201,9 @@ def song_management(event_id, round_id):
                     st.rerun()
                 else:
                     st.success(f"All rounds for event '{event_name}' have been managed.")
+            
+            st.info(f"After you assign songs (hit the button) to next round, visit tab 'Before round {current_round}' ")
+
         with tab4:
             ######################################
             #  Show overview of songs per round  #
@@ -392,9 +394,9 @@ def show_songs_per_round(event_id):
 
     # Legend for the icons
     legend = """
-    :x: Removed  
-    :white_check_mark: Played  
-    :musical_note: Available for voting
+    :musical_note: Available for voting  
+    :white_check_mark: Marked as played   
+    :x: Removed 
     """
     
     st.text("Legend")

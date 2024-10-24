@@ -8,7 +8,13 @@ st.header("Aktuálně neprobíhá žádné hlasování.")
 
 st.divider()
 
-st.subheader("Neváhejte nás však kontaktovat:")
+st.subheader("Kdo jsme?")
+st.write("Top party band hrající přes 100 světových hitů, převážně r. 2000+,")
+st.write("ale také osvědčené pecky ze 60. - 90. let.")
+st.write("Čtyři skvělé zpěvačky a zpěváky z POP ACADEMY OSTRAVA doplňuje profi kapela.")
+st.write("Díky naší aplikaci máte jedinečnou možnost vybrat písně, které bude kapela na koncertě hrát!")
+
+st.subheader("Neváhejte nás kontaktovat:")
 
 # Displaying contact information
 st.write("📞 +420 608 462 008")
