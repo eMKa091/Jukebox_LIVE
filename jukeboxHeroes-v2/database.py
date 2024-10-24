@@ -9,7 +9,6 @@ def init_db():
     conn = sqlite3.connect(DATABASE)
     c = conn.cursor()
 
-    # Create 'events' table
     c.execute('''
         CREATE TABLE IF NOT EXISTS events (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -17,10 +16,10 @@ def init_db():
             date TEXT,
             round_count INTEGER DEFAULT 1,
             current_round INTEGER DEFAULT 1,
-            voting_active BOOLEAN DEFAULT 0
+            voting_active BOOLEAN DEFAULT 0,
+            round_status TEXT DEFAULT 'not_started'
         )
     ''')
-
     # Create 'rounds' table
     c.execute('''
         CREATE TABLE IF NOT EXISTS rounds (
