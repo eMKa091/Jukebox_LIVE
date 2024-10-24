@@ -13,7 +13,7 @@ st.write("Top party band hrající přes :100: světových hitů, převážně r
 st.write("ale také osvědčené pecky ze 60. - 90. let.")
 st.write("")
 st.write(":four: skvělé zpěvačky a zpěváky z POP ACADEMY OSTRAVA doplňuje profi kapela.")
-st.write("Díky naší aplikaci :iphone: máte jedinečnou možnost vybrat písně, které bude kapela na koncertě hrát!")
+st.write("Díky naší webové aplikaci máte jedinečnou možnost vybrat písně, které bude kapela na koncertě hrát!")
 
 st.divider()
 
