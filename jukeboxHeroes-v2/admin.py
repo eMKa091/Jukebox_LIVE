@@ -86,6 +86,7 @@ def admin_page():
 # EVENT MANAGEMENT #
 ####################
         elif menu_selection == "Event Management":
+            tab1, tab2 = st.tabs([":new: Create new event", ":x: Delete events"])
             
             conn = sqlite3.connect(DATABASE)
             c = conn.cursor()
@@ -94,33 +95,32 @@ def admin_page():
             conn.close()
             
             if songs_exist:
-                # Event creation form
-                st.subheader(":new: Create new event", divider=True)
-                with st.form(key='create_event_form'):
-                    new_event_name = st.text_input("Event name")
-                    new_event_date = st.date_input("Event date")
-                    new_event_rounds = st.number_input("Number of rounds", min_value=1, max_value=10, value=1)
-                    create_event_button = st.form_submit_button("Create event")
+                with tab1:
+                    # Event creation form
+                    with st.form(key='create_event_form'):
+                        new_event_name = st.text_input("Event name")
+                        new_event_date = st.date_input("Event date")
+                        new_event_rounds = st.number_input("Number of rounds", min_value=1, max_value=10, value=1)
+                        create_event_button = st.form_submit_button("Create event")
 
-                    if create_event_button and new_event_name and new_event_date:
-                        event_id = create_event(new_event_name, str(new_event_date), new_event_rounds)
-                        st.success(f"Event '{new_event_name}' created with ID {event_id}")
+                        if create_event_button and new_event_name and new_event_date:
+                            event_id = create_event(new_event_name, str(new_event_date), new_event_rounds)
+                            st.success(f"Event '{new_event_name}' created with ID {event_id}")
 
-                        if new_event_rounds == 1:
-                        # Add all songs to the event
-                            add_all_songs_to_event(event_id)
-                            st.success(f"All songs assigned to event by default.")
-                            time.sleep(2)
+                            if new_event_rounds == 1:
+                            # Add all songs to the event
+                                add_all_songs_to_event(event_id)
+                                st.success(f"All songs assigned to event by default.")
+                                time.sleep(2)
 
-                        else:
-                            round_id = 1
-                            add_all_songs_to_event(event_id, round_id)
-                            st.success(f"All songs assigned to first round by default.")
-                            time.sleep(2)
-                        
-                        # Reload events after creation
-                        events = load_events()
-
+                            else:
+                                round_id = 1
+                                add_all_songs_to_event(event_id, round_id)
+                                st.success(f"All songs assigned to first round by default.")
+                                time.sleep(2)
+                            
+                            # Reload events after creation
+                            events = load_events()
             else:
                 st.subheader("Create new events", divider=True)
                 st.info(":flashlight: Please upload song list first to create new event")
@@ -129,14 +129,13 @@ def admin_page():
                 st.write("")
 
             if not events:
-                st.subheader("Manage existing events",divider=True)
                 st.info(":flashlight: There are no previously created events")
             else:
-                st.subheader(":x: Delete existing events", divider=True)
-                for event_id, event_name in events:
-                    if st.button(f"Delete event '{event_name}'", key=f"delete_{event_id}"):
-                        delete_event(event_id)
-                        st.rerun()
+                with tab2:
+                    for event_id, event_name in events:
+                        if st.button(f"Delete event '{event_name}'", key=f"delete_{event_id}"):
+                            delete_event(event_id)
+                            st.rerun()
 
 
 #############################
