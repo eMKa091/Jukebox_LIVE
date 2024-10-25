@@ -7,7 +7,9 @@
             FROM songs s 
             JOIN event_songs es ON s.id = es.song_id 
             WHERE es.event_id = ? AND es.played = 0
-            
+
+
+- [ ]   !! Statuses from voting influences status for song management and that is not good.            
 - [x]   !! When page is refreshed, st.session state is lost and that means reset to round 1 on song mgmgt.
 - [ ]   Show also date on event details (buttons, etc.)
 - [ ]   Introduce "limiter" to number of songs.
