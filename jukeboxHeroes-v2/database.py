@@ -16,6 +16,7 @@ def init_db():
             date TEXT,
             round_count INTEGER DEFAULT 1,
             current_round INTEGER DEFAULT 1,
+            voting_round INTEGER DEFAULT 1,
             voting_active BOOLEAN DEFAULT 0,
             round_status TEXT DEFAULT 'not_started',
             last_round BOOLEAN DEFAULT 0

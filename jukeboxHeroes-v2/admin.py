@@ -173,8 +173,8 @@ def admin_page():
                     # Get event details
                     conn = sqlite3.connect(DATABASE)
                     c = conn.cursor()
-                    c.execute("SELECT round_count, current_round, voting_active, round_status FROM events WHERE id = ?", (event_id_selected,))
-                    round_count, current_round, voting_active, round_status = c.fetchone()
+                    c.execute("SELECT round_count, current_round, voting_round, voting_active, round_status FROM events WHERE id = ?", (event_id_selected,))
+                    round_count, current_round, voting_round, voting_active, round_status = c.fetchone()
                     conn.close()
 
                     # Create tabs for each round
@@ -186,13 +186,13 @@ def admin_page():
                                 # Start/stop voting controls based on `voting_active`
                                 if voting_active:
                                     if st.button("Stop voting"):
-                                        stop_voting(event_id_selected, current_round)
+                                        stop_voting(event_id_selected, voting_round)
                                         st.success(f"Voting stopped for event '{event_name_selected}', round {current_round}.")
                                         
                                         # Mark the round as completed
                                         conn = sqlite3.connect(DATABASE)
                                         c = conn.cursor()
-                                        c.execute("UPDATE events SET round_status = 'completed', voting_active = 0 WHERE id = ?", (event_id_selected,))
+                                        c.execute("UPDATE events SET round_status = 'completed', voting_active = 0, voting_round = voting_round + 1 WHERE id = ?", (event_id_selected,))
                                         conn.commit()
                                         conn.close()
                                         st.rerun()
@@ -204,7 +204,7 @@ def admin_page():
                                     if current_round < round_count:
                                         conn = sqlite3.connect(DATABASE)
                                         c = conn.cursor()
-                                        c.execute("UPDATE events SET current_round = ?, round_status = 'not_started' WHERE id = ?", (current_round + 1, event_id_selected))
+                                        c.execute("UPDATE events SET voting_round = ?, round_status = 'not_started' WHERE id = ?", (current_round + 1, event_id_selected))
                                         conn.commit()
                                         conn.close()
                                         st.rerun()
