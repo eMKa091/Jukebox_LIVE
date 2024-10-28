@@ -174,7 +174,6 @@ def admin_page():
             if events:
                 st.subheader(":wrench: Manage Voting", divider=True)
                 event_name_selected = st.selectbox("Select Event", [f"{e[1]} - {e[2]}" for e in events])
-                # Split selected event to match both name and additional column
                 selected_name, selected_column = event_name_selected.split(" - ", 1)       
                 
                 # Find event_id based on both parts of the selection
@@ -185,7 +184,6 @@ def admin_page():
                 c = conn.cursor()
                 c.execute("SELECT round_count, current_round, voting_round, voting_active, round_status FROM events WHERE id = ?", (event_id_selected,))
                 round_count, current_round, voting_round, voting_active, round_status = c.fetchone()
-                conn.close()
 
                 # Simulate tabs with a selectbox, defaulting to the active voting round
                 selected_round = st.selectbox(
@@ -194,15 +192,41 @@ def admin_page():
                     index=voting_round - 1  # Set default selection to the voting_round
                 )
 
-                # Display voting controls and info for the selected round
+                # Fetch or initialize max_votes for the selected round
+                c.execute("SELECT max_votes FROM rounds WHERE event_id = ? AND round_number = ?", (event_id_selected, selected_round))
+                max_votes_result = c.fetchone()
+                current_max_votes = max_votes_result[0] if max_votes_result else 5  # Default to 5 if not set
+                conn.close()
+
+                # Set or update max_votes for the selected round
+                new_max_votes = st.number_input(
+                    f"Set maximum votes for Round {selected_round}:",
+                    min_value=1, max_value=100, value=current_max_votes, step=1,
+                    key=f"max_votes_round_{selected_round}"
+                )
+
+                # Save updated max_votes to the database
+                if new_max_votes != current_max_votes:
+                    conn = sqlite3.connect(DATABASE)
+                    c = conn.cursor()
+                    # Update or insert max_votes for this round
+                    if max_votes_result:
+                        c.execute("UPDATE rounds SET max_votes = ? WHERE event_id = ? AND round_number = ?", (new_max_votes, event_id_selected, selected_round))
+                    else:
+                        c.execute("INSERT INTO rounds (event_id, round_number, max_votes) VALUES (?, ?, ?)", (event_id_selected, selected_round, new_max_votes))
+                    conn.commit()
+                    conn.close()
+                    st.success(f"Max votes for Round {selected_round} updated to {new_max_votes}.")
+
+                # Voting controls for the selected round
                 if selected_round == voting_round:
-                    # Start/stop voting controls based on `voting_active`
+                    # Start/stop voting controls based on `voting_active` status
                     if voting_active:
                         if st.button("Stop voting"):
                             stop_voting(event_id_selected, voting_round)
                             st.success(f"Voting stopped for event '{event_name_selected}', round {voting_round}.")
                             
-                            # Mark round as completed and update the database
+                            # Update the database
                             conn = sqlite3.connect(DATABASE)
                             c = conn.cursor()
                             c.execute("UPDATE events SET round_status = 'completed', voting_active = 0 WHERE id = ?", (event_id_selected,))
@@ -213,7 +237,7 @@ def admin_page():
                     elif round_status == 'completed':
                         st.info(f"Voting for round {voting_round} is completed.")
 
-                        # Automatically increment to the next round
+                        # Automatically move to the next round
                         if voting_round < round_count:
                             conn = sqlite3.connect(DATABASE)
                             c = conn.cursor()
@@ -234,7 +258,7 @@ def admin_page():
                             start_voting(event_id_selected, voting_round)
                             st.success(f"Voting started for event '{event_name_selected}', round {voting_round}.")
 
-                            # Update the database to mark voting as active
+                            # Update the database
                             conn = sqlite3.connect(DATABASE)
                             c = conn.cursor()
                             c.execute("UPDATE events SET round_status = 'ongoing', voting_active = 1 WHERE id = ?", (event_id_selected,))
