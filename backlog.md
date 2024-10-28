@@ -9,9 +9,9 @@
             WHERE es.event_id = ? AND es.played = 0
 
 
-- [ ]   !! Statuses from voting influences status for song management and that is not good.            
+- [x]   !! Statuses from voting influences status for song management and that is not good.            
 - [x]   !! When page is refreshed, st.session state is lost and that means reset to round 1 on song mgmgt.
-- [ ]   Show also date on event details (buttons, etc.)
+- [x]   Show also date on event details (buttons, etc.)
 - [ ]   Introduce "limiter" to number of songs.
 - [ ]   Band page
 - [x]   Introduce another column "removed" BOOLEAN - change DB schema, change all fucking functions.

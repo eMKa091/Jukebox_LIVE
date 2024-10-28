@@ -14,7 +14,7 @@ init_db()
 def load_events():
     conn = sqlite3.connect(DATABASE)
     c = conn.cursor()
-    c.execute("SELECT id, name FROM events")
+    c.execute("SELECT id, name, date FROM events")
     events = c.fetchall()
     conn.close()
     return events
@@ -99,12 +99,13 @@ def admin_page():
                     # Event creation form
                     with st.form(key='create_event_form'):
                         new_event_name = st.text_input("Event name")
-                        new_event_date = st.date_input("Event date")
+                        new_event_date = st.date_input("Event date",format="DD.MM.YYYY")
+                        formatted_date = new_event_date.strftime("%d.%m.%Y")
                         new_event_rounds = st.number_input("Number of rounds", min_value=1, max_value=10, value=1)
                         create_event_button = st.form_submit_button("Create event")
 
                         if create_event_button and new_event_name and new_event_date:
-                            event_id = create_event(new_event_name, str(new_event_date), new_event_rounds)
+                            event_id = create_event(new_event_name, formatted_date, new_event_rounds)
                             st.success(f"Event '{new_event_name}' created with ID {event_id}")
 
                             if new_event_rounds == 1:
@@ -132,8 +133,8 @@ def admin_page():
                 st.info(":flashlight: There are no previously created events")
             else:
                 with tab2:
-                    for event_id, event_name in events:
-                        if st.button(f"Delete event '{event_name}'", key=f"delete_{event_id}"):
+                    for event_id, event_name, date in events:
+                        if st.button(f"Delete event {event_name} - happening on {date}", key=f"delete_{event_id}"):
                             delete_event(event_id)
                             st.rerun()
 
@@ -145,8 +146,14 @@ def admin_page():
             
             # Manage event songs
             if events:
-                event_name_selected = st.selectbox("Select Event", [e[1] for e in events])
-                event_id_selected = [e[0] for e in events if e[1] == event_name_selected][0]    
+                event_name_selected = st.selectbox("Select Event", [f"{e[1]} - {e[2]}" for e in events]) #[1] means which column from DB
+                
+                # Split selected event to match both name and additional column
+                selected_name, selected_column = event_name_selected.split(" - ", 1)       
+                
+                # Find event_id based on both parts of the selection
+                event_id_selected = [e[0] for e in events if e[1] == selected_name and e[2] == selected_column][0]
+                
                 
                 # Use session state to manage the rounds for each event
                 event_round_key = f'round_id_{event_id_selected}'
@@ -166,8 +173,12 @@ def admin_page():
         elif menu_selection == "Voting Control":           
             if events:
                 st.subheader(":wrench: Manage Voting", divider=True)
-                event_name_selected = st.selectbox("Select event", [e[1] for e in events])
-                event_id_selected = [e[0] for e in events if e[1] == event_name_selected][0]
+                event_name_selected = st.selectbox("Select Event", [f"{e[1]} - {e[2]}" for e in events])
+                # Split selected event to match both name and additional column
+                selected_name, selected_column = event_name_selected.split(" - ", 1)       
+                
+                # Find event_id based on both parts of the selection
+                event_id_selected = [e[0] for e in events if e[1] == selected_name and e[2] == selected_column][0]
 
                 # Get event details
                 conn = sqlite3.connect(DATABASE)
@@ -175,9 +186,6 @@ def admin_page():
                 c.execute("SELECT round_count, current_round, voting_round, voting_active, round_status FROM events WHERE id = ?", (event_id_selected,))
                 round_count, current_round, voting_round, voting_active, round_status = c.fetchone()
                 conn.close()
-
-                # Inform user about the current voting round
-                st.info(f"This is a multi-round event. Currently in **Round {voting_round}** for voting.")
 
                 # Simulate tabs with a selectbox, defaulting to the active voting round
                 selected_round = st.selectbox(

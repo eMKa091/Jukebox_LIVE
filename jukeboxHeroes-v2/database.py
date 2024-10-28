@@ -28,6 +28,7 @@ def init_db():
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             event_id INTEGER,
             round_number INTEGER,
+            max_votes INTEGER DEFAULT 5,
             description TEXT,
             FOREIGN KEY (event_id) REFERENCES events(id)
         )
