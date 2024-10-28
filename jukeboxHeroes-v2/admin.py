@@ -160,82 +160,88 @@ def admin_page():
             else:
                 st.info(":flashlight: Please create an event first")
 
-
 ##################
 # VOTING CONTROL #
 ##################
         elif menu_selection == "Voting Control":           
             if events:
-                    st.subheader(":wrench: Manage Voting", divider=True)
-                    event_name_selected = st.selectbox("Select event", [e[1] for e in events])
-                    event_id_selected = [e[0] for e in events if e[1] == event_name_selected][0]
+                st.subheader(":wrench: Manage Voting", divider=True)
+                event_name_selected = st.selectbox("Select event", [e[1] for e in events])
+                event_id_selected = [e[0] for e in events if e[1] == event_name_selected][0]
 
-                    # Get event details
-                    conn = sqlite3.connect(DATABASE)
-                    c = conn.cursor()
-                    c.execute("SELECT round_count, current_round, voting_round, voting_active, round_status FROM events WHERE id = ?", (event_id_selected,))
-                    round_count, current_round, voting_round, voting_active, round_status = c.fetchone()
-                    conn.close()
+                # Get event details
+                conn = sqlite3.connect(DATABASE)
+                c = conn.cursor()
+                c.execute("SELECT round_count, current_round, voting_round, voting_active, round_status FROM events WHERE id = ?", (event_id_selected,))
+                round_count, current_round, voting_round, voting_active, round_status = c.fetchone()
+                conn.close()
 
-                    # Create tabs for each round
-                    tabs = st.tabs([f"Round {i}" for i in range(1, round_count + 1)])
+                # Inform user about the current voting round
+                st.info(f"This is a multi-round event. Currently in **Round {voting_round}** for voting.")
 
-                    for i in range(1, round_count + 1):
-                        with tabs[i - 1]:
-                            if i == current_round:
-                                # Start/stop voting controls based on `voting_active`
-                                if voting_active:
-                                    if st.button("Stop voting"):
-                                        stop_voting(event_id_selected, voting_round)
-                                        st.success(f"Voting stopped for event '{event_name_selected}', round {current_round}.")
-                                        
-                                        # Mark the round as completed
-                                        conn = sqlite3.connect(DATABASE)
-                                        c = conn.cursor()
-                                        c.execute("UPDATE events SET round_status = 'completed', voting_active = 0, voting_round = voting_round + 1 WHERE id = ?", (event_id_selected,))
-                                        conn.commit()
-                                        conn.close()
-                                        st.rerun()
+                # Simulate tabs with a selectbox, defaulting to the active voting round
+                selected_round = st.selectbox(
+                    "Select Round", 
+                    options=list(range(1, round_count + 1)),
+                    index=voting_round - 1  # Set default selection to the voting_round
+                )
 
-                                elif round_status == 'completed':
-                                    st.info(f"Voting for round {current_round} is completed.")
-                                    
-                                    # Automatically increment to the next round after stopping voting in the last round
-                                    if current_round < round_count:
-                                        conn = sqlite3.connect(DATABASE)
-                                        c = conn.cursor()
-                                        c.execute("UPDATE events SET voting_round = ?, round_status = 'not_started' WHERE id = ?", (current_round + 1, event_id_selected))
-                                        conn.commit()
-                                        conn.close()
-                                        st.rerun()
-                                    elif current_round == round_count:
-                                        # Set last_round if this is the final round
-                                        conn = sqlite3.connect(DATABASE)
-                                        c = conn.cursor()
-                                        c.execute("UPDATE events SET last_round = 1 WHERE id = ?", (event_id_selected,))
-                                        conn.commit()
-                                        conn.close()
+                # Display voting controls and info for the selected round
+                if selected_round == voting_round:
+                    # Start/stop voting controls based on `voting_active`
+                    if voting_active:
+                        if st.button("Stop voting"):
+                            stop_voting(event_id_selected, voting_round)
+                            st.success(f"Voting stopped for event '{event_name_selected}', round {voting_round}.")
+                            
+                            # Mark round as completed and update the database
+                            conn = sqlite3.connect(DATABASE)
+                            c = conn.cursor()
+                            c.execute("UPDATE events SET round_status = 'completed', voting_active = 0 WHERE id = ?", (event_id_selected,))
+                            conn.commit()
+                            conn.close()
+                            st.rerun()
 
-                                else:
-                                    if st.button("Start voting"):
-                                        start_voting(event_id_selected, current_round)
-                                        st.success(f"Voting started for event '{event_name_selected}', round {current_round}.")
-                                        
-                                        conn = sqlite3.connect(DATABASE)
-                                        c = conn.cursor()
-                                        c.execute("UPDATE events SET round_status = 'ongoing', voting_active = 1 WHERE id = ?", (event_id_selected,))
-                                        conn.commit()
-                                        conn.close()
-                                        st.rerun()
+                    elif round_status == 'completed':
+                        st.info(f"Voting for round {voting_round} is completed.")
 
-                            # Past rounds: Only show that the round is completed
-                            elif i < current_round:
-                                st.info(f"Round {i} is completed.")
+                        # Automatically increment to the next round
+                        if voting_round < round_count:
+                            conn = sqlite3.connect(DATABASE)
+                            c = conn.cursor()
+                            c.execute("UPDATE events SET voting_round = ?, round_status = 'not_started' WHERE id = ?", (voting_round + 1, event_id_selected))
+                            conn.commit()
+                            conn.close()
+                            st.rerun()
+                        elif voting_round == round_count:
+                            # Set last_round if this is the final round
+                            conn = sqlite3.connect(DATABASE)
+                            c = conn.cursor()
+                            c.execute("UPDATE events SET last_round = 1 WHERE id = ?", (event_id_selected,))
+                            conn.commit()
+                            conn.close()
 
-                            # Future rounds: Display upcoming message and current round restriction
-                            else:
-                                st.warning(f"Current round is {current_round}. You cannot interact with Round {i} until the current round is completed.")
-                                st.info(f"Round {i} is upcoming.")
+                    else:
+                        if st.button("Start voting"):
+                            start_voting(event_id_selected, voting_round)
+                            st.success(f"Voting started for event '{event_name_selected}', round {voting_round}.")
+
+                            # Update the database to mark voting as active
+                            conn = sqlite3.connect(DATABASE)
+                            c = conn.cursor()
+                            c.execute("UPDATE events SET round_status = 'ongoing', voting_active = 1 WHERE id = ?", (event_id_selected,))
+                            conn.commit()
+                            conn.close()
+                            st.rerun()
+
+                # Past rounds: Only show that the round is completed
+                elif selected_round < voting_round:
+                    st.info(f"Round {selected_round} is completed.")
+
+                # Future rounds: Display upcoming message and current round restriction
+                else:
+                    st.warning(f"Current round is {voting_round}. You cannot interact with Round {selected_round} until the current round is completed.")
+                    st.info(f"Round {selected_round} is upcoming.")
 
             else:
                 st.info(":flashlight: Please create an event first")
