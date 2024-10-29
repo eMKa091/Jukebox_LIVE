@@ -16,16 +16,12 @@ def get_active_event():
 def get_event_details(event_id):
     conn = sqlite3.connect(DATABASE)
     c = conn.cursor()
-    c.execute('SELECT name, round_count, voting_active, current_round FROM events WHERE id = ?', (event_id,))
+    c.execute('SELECT name, round_count, voting_round FROM events WHERE id = ?', (event_id,))
     event = c.fetchone()
     conn.close()
     return event if event else None
 
 def voting_page():
-    if st.button(label="Admin page"):
-        st.session_state['page'] = 'admin'
-        st.rerun()
-
     # Fetch active event
     event = get_active_event()
 
@@ -33,7 +29,7 @@ def voting_page():
         display_splash_screen("Aktuálně neprobíhá žádné hlasování.")
         return
 
-    event_id, event_name, round_count, voting_active, current_round = event
+    event_id, event_name, round_count, voting_active, current_round = event  # Fetch current round directly
 
     st.title(f"Vote for your favorite songs")
 
@@ -50,28 +46,32 @@ def voting_page():
 
     # Check if the user has already voted in the current round
     if event_id in st.session_state['voted_rounds'] and current_round in st.session_state['voted_rounds'][event_id]:
-        st.title("Thank you for voting!")
-        st.subheader(f"You have already voted in Round {current_round}.")
+        st.success("Thank you for voting in this round!")
         return  # Prevent further voting in this round
 
-    # Fetch the songs for voting (considering rounds if it's a multi-round event)
-    if round_count > 1:
-        songs = fetch_songs_for_voting(event_id)
-        st.subheader(f"Round {current_round} voting")
-    else:
-        songs = fetch_songs_for_voting(event_id)
-        st.subheader("Single-Round Voting")
+    # Fetch the songs for the current round
+    songs = fetch_songs_for_voting(event_id)
 
     if not songs:
         st.info("No songs available for voting.")
         return
 
-    # Display song selection (max selection of 5)
+    st.subheader(f"Voting for Round {current_round}")
+
+    # Fetch max votes for the current round
+    conn = sqlite3.connect(DATABASE)
+    c = conn.cursor()
+    c.execute("SELECT max_votes FROM rounds WHERE event_id = ? AND round_number = ?", (event_id, current_round))
+    max_votes_result = c.fetchone()
+    current_max_votes = max_votes_result[0] if max_votes_result else 5  # Default to 5 if not set
+    conn.close()
+
+    # Display song selection (restricted by max selection)
     selected_songs = st.multiselect(
-        "Select up to 5 songs:",
+        "Select up to {} songs:".format(current_max_votes),
         options=[song[0] for song in songs],
         format_func=lambda x: f"{[song[1] for song in songs if song[0] == x][0]} by {[song[2] for song in songs if song[0] == x][0]}",
-        max_selections=5
+        max_selections=current_max_votes
     )
 
     if st.button("Submit Vote"):
@@ -92,8 +92,12 @@ def voting_page():
             st.rerun()
         else:
             st.warning("Please select at least one song to submit your vote")
-
+    
+    if st.button(label="Admin page"):
+        st.session_state['page'] = 'admin'
+        st.rerun()
+        
 # Main page
 if __name__ == "__main__":
     st.set_page_config(page_title="Voting Page", page_icon="🎶")
-    voting_page()
+    voting_page()  # Call the voting_page function

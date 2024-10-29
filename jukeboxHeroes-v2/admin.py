@@ -27,7 +27,7 @@ def admin_page():
 
         # Sidebar Menu for Navigation
         st.sidebar.title("Admin Menu")
-        menu_selection = st.sidebar.radio("Go to", ["Master song list", "Event Management", "Song management for events", "Voting Control", "Data Backup", "Voting Page"])
+        menu_selection = st.sidebar.radio("Go to", ["Master song list", "Event Management", "Song management for events", "Voting Control", "Data Backup", "Voting Page", "Band Page"])
 
 ##########################################################################
 #                               PAGE BUILD                               #
@@ -293,8 +293,14 @@ def admin_page():
 # NAVIGATION - VOTING PAGE #
 ###################if#########
         elif menu_selection == "Voting Page":
-            #if st.button("Go to Voting Page"):
             st.session_state['page'] = 'voting'
+            st.rerun()
+
+##########################
+# NAVIGATION - BAND PAGE #
+##########################
+        elif menu_selection == "Band Page":
+            st.session_state['page'] = 'band'
             st.rerun()
     else:
         admin_login()

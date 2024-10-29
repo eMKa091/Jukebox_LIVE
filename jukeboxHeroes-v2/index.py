@@ -1,17 +1,21 @@
 import streamlit as st
 from admin import admin_page
 from voting import voting_page
+from band import band_page
 from database import add_admin_user
 
 # Uncomment this if you want to add an admin user
-#add_admin_user("a", "a")
+add_admin_user("a", "a")
 
-if 'page' not in st.session_state:
-    st.session_state['page'] = 'admin'  # Default to admin page
+# Get the query parameters using the new API
+params = st.query_params  # st.query_params returns a dictionary-like object
 
-# Page selection logic
-if st.session_state['page'] == 'admin':
-    admin_page()  # Call the admin_page function from admin.py
+# Check if 'admin' query parameter exists and render the correct page
+if 'admin' in params and params['admin'] == 'True':  # Compare directly to string 'True'
+    admin_page()
 
-elif st.session_state['page'] == 'voting':
-    voting_page()  # Call the voting_page function from voting.py
+elif 'band' in params and params['band'] == 'True':
+    band_page()
+
+else:
+    voting_page()

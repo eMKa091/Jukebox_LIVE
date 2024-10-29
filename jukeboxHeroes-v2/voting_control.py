@@ -92,7 +92,9 @@ def display_splash_screen(message="No ongoing voting."):
     st.write("✉️ [rudyhorvat77@gmail.com](mailto:rudyhorvat77@gmail.com)")
     st.image("./img/rudy.png")
     st.divider()
-
+    if st.button(label="Admin page"):
+        st.session_state['page'] = 'admin'
+        st.rerun()
 ################################
 # Submit votes to the database #
 ################################
