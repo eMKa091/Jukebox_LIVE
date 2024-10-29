@@ -92,11 +92,7 @@ def voting_page():
             st.rerun()
         else:
             st.warning("Please select at least one song to submit your vote")
-    
-    if st.button(label="Admin page"):
-        st.session_state['page'] = 'admin'
-        st.rerun()
-        
+
 # Main page
 if __name__ == "__main__":
     st.set_page_config(page_title="Voting Page", page_icon="🎶")

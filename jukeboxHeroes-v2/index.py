@@ -1,21 +1,34 @@
 import streamlit as st
-from admin import admin_page
+from admin import admin_page, admin_login
 from voting import voting_page
 from band import band_page
 from database import add_admin_user
 
-# Uncomment this if you want to add an admin user
-add_admin_user("a", "a")
+# Uncomment to add an admin user for testing purposes
+# add_admin_user("a", "a")
 
-# Get the query parameters using the new API
-params = st.query_params  # st.query_params returns a dictionary-like object
+# Initialize session state variables if they are not already set
+if 'logged_in' not in st.session_state:
+    st.session_state['logged_in'] = False
+if 'page' not in st.session_state:
+    st.session_state['page'] = 'voting'  # Default to voting page if not logged in
 
-# Check if 'admin' query parameter exists and render the correct page
-if 'admin' in params and params['admin'] == 'True':  # Compare directly to string 'True'
-    admin_page()
-
-elif 'band' in params and params['band'] == 'True':
-    band_page()
-
+# Navigation options based on session state
+if st.session_state['logged_in']:
+    # If logged in, route to the chosen page
+    if st.session_state['page'] == 'admin':
+        admin_page()
+    elif st.session_state['page'] == 'band':
+        band_page()
+    else:
+        voting_page()
 else:
-    voting_page()
+    # Show the login page if the user selects it
+    if st.session_state['page'] == 'admin':
+        admin_login()
+    else:
+        # Display voting page with option to navigate to admin login
+        voting_page()
+        if st.button("Admin Login"):
+            st.session_state['page'] = 'admin'  # Set page to admin for login
+            st.rerun()  # Trigger rerun to update page
