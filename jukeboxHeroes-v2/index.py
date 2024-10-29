@@ -7,14 +7,15 @@ from database import add_admin_user
 # Uncomment to add an admin user for testing purposes
 # add_admin_user("a", "a")
 
-# Initialize session state variables if they are not already set
 if 'logged_in' not in st.session_state:
     st.session_state['logged_in'] = False
 if 'page' not in st.session_state:
-    st.session_state['page'] = 'voting'  # Default to voting page if not logged in
+    st.session_state['page'] = 'voting'
 
 if st.query_params:
-    if st.query_params["admin"] == "True":
+    if st.query_params["admin"] == "Boss":
         admin_page()
+    elif st.query_params["admin"] == "Band":
+        band_page()
 else:
     voting_page()
