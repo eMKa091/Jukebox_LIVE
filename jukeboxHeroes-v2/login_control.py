@@ -15,8 +15,8 @@ def authenticate(username, password):
 def handle_login(username, password):
     if authenticate(username, password):
         st.session_state['logged_in'] = True
-        st.session_state['page'] = 'admin'  # Set page to 'admin'
-        st.rerun()  # Trigger rerun after successful login
+        st.session_state['page'] = 'admin'
+        st.rerun()
     else:
         st.error("Invalid username or password")
 
