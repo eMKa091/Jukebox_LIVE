@@ -101,6 +101,12 @@ def init_db():
             FOREIGN KEY (song_id) REFERENCES songs(id)
         )
     ''')
+    c.execute('''
+        CREATE TABLE IF NOT EXISTS band_page_content (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            content TEXT
+        )
+        ''')
 
     conn.commit()
     conn.close()

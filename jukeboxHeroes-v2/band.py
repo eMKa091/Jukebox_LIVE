@@ -1,9 +1,15 @@
 import streamlit as st
+from band_control import get_band_page_content
 
-st.set_page_config(page_title="band", page_icon="🎶")
-
+# Band Page Display
 def band_page():
-    st.write("Bubu")
+    st.title("Band Page")
+    st.subheader("Playlist for the Band")
 
-if __name__ == "__main__":
-    band_page()
+    # Retrieve the current playlist content from the database
+    playlist_content = get_band_page_content()
+    
+    if playlist_content:
+        st.markdown(playlist_content)
+    else:
+        st.info("No playlist content defined yet.")

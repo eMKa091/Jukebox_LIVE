@@ -5,6 +5,8 @@ from database import *
 from song_control import *
 from voting_control import *
 from login_control import admin_login
+from results import *
+from band_control import *
 
 # Initialize the database
 DATABASE = 'votes.db'
@@ -27,7 +29,7 @@ def admin_page():
 
         # Sidebar Menu for Navigation
         st.sidebar.title("Admin Menu")
-        menu_selection = st.sidebar.radio("Go to", ["Master song list", "Event Management", "Song management for events", "Voting Control", "Data Backup"])
+        menu_selection = st.sidebar.radio("Go to", ["Master song list", "Event Management", "Song management for events", "Voting Control", "Results", "Band page control", "Data Backup"])
 
 ##########################################################################
 #                               PAGE BUILD                               #
@@ -137,7 +139,6 @@ def admin_page():
                         if st.button(f"Delete event {event_name} - happening on {date}", key=f"delete_{event_id}"):
                             delete_event(event_id)
                             st.rerun()
-
 
 #############################
 # SONG MANAGEMENT PER EVENT #
@@ -278,6 +279,24 @@ def admin_page():
             else:
                 st.info(":flashlight: Please create an event first")
 
+###########
+# RESULTS #
+###########
+        elif menu_selection == "Results":
+            st.subheader("Results")
+            
+            # Get data from the database
+            events, votes = get_event_data()
+
+            # Display event results
+            display_event_results(events, votes)
+
+########################
+# BAND PAGE DEFINITION #
+########################
+        elif menu_selection == "Band page control":
+            admin_band_page_control()
+            
 #####################
 # BACKUP OPERATIONS #
 #####################
