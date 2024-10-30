@@ -1,15 +1,17 @@
 import streamlit as st
 from band_control import get_band_page_content
 
-# Band Page Display
 def band_page():
     st.title("Band Page")
-    st.subheader("Playlist for the Band")
 
     # Retrieve the current playlist content from the database
     playlist_content = get_band_page_content()
     
     if playlist_content:
-        st.markdown(playlist_content)
+        # Replace newline characters with <br> for line breaks
+        playlist_content = playlist_content.replace("\n", "<br>")
+        # Replace tab characters with four non-breaking spaces for indentation
+        playlist_content = playlist_content.replace("\t", "&nbsp;&nbsp;&nbsp;&nbsp;")
+        st.markdown(playlist_content, unsafe_allow_html=True)
     else:
         st.info("No playlist content defined yet.")
