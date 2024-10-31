@@ -60,7 +60,7 @@ def voting_page():
     limit_reached = False  # Flag to indicate if max selection limit is reached
 
     # Inform user of the maximum selection allowed
-    st.write(f"Maximální počet písní pro hlasování: {current_max_votes} :")
+    st.write(f"Maximální počet písní pro hlasování: {current_max_votes}")
 
     # Display checkboxes for each song
     for song_id, song_title, artist in songs:
