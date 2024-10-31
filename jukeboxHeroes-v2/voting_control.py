@@ -81,17 +81,69 @@ def voting_control(event_id, round_count):
         manage_single_round(event_id)
 
 ############################
+# Fetch Songs for Display  #
+############################
+def fetch_song_list():
+    conn = sqlite3.connect(DATABASE)
+    c = conn.cursor()
+    c.execute("SELECT title, artist FROM songs")
+    songs = c.fetchall()
+    conn.close()
+    return songs
+
+############################
 # Splash Screen Display    #
 ############################
-def display_splash_screen(message="No ongoing voting."):
+def display_splash_screen(message="Neprobíhá žádné hlasování."):
     st.subheader("Vážení hosté,")
-    st.subheader(message)
+    st.text(message)
     st.divider()
-    st.subheader("Neváhejte nás kontaktovat:")
+    
+    st.subheader("Kdo jsme?")
+    st.write(":white_check_mark: Top party band hrající přes 100 světových hitů, převážně r. 2000+, ale také pecky ze 60. - 90. let.")
+    st.write(":white_check_mark: Čtyři skvělé zpěvačky a zpěváci z POP ACADEMY OSTRAVA, které doplňuje profi kapela.")
+    st.write(":white_check_mark: Díky naší aplikaci máte jedinečnou možnost vybrat písně, které bude kapela na koncertě hrát!")
+
+    st.divider()
+    st.subheader("Pro více informací nás neváhejte kontaktovat:")
     st.write("📞 +420 608 462 008")
     st.write("✉️ [rudyhorvat77@gmail.com](mailto:rudyhorvat77@gmail.com)")
-    #st.image("./img/rudy.png")
     st.divider()
+
+    # Fetch the song list from the database
+    songs = fetch_song_list()
+
+    if songs:
+        # Initialize session state for popup if not already set
+        if 'show_playlist' not in st.session_state:
+            st.session_state['show_playlist'] = False
+
+        # Button to toggle the playlist display
+        if st.button("Jaké písně hrajeme?"):
+            st.session_state['show_playlist'] = not st.session_state['show_playlist']
+
+        # Display the playlist in two columns if show_playlist is True
+        if st.session_state['show_playlist']:
+            st.subheader("Náš repertoár")
+        
+        if songs:
+            # Split songs into two lists for two columns
+            half = len(songs) // 2
+            left_songs = songs[:half]
+            right_songs = songs[half:]
+
+            # Set up two columns
+            col1, col2 = st.columns(2)
+
+            # Display songs in two columns
+            with col1:
+                for title, artist in left_songs:
+                    st.write(f"- **{title}** od *{artist}*")
+
+            with col2:
+                for title, artist in right_songs:
+                    st.write(f"- **{title}** od *{artist}*")
+
 
 ################################
 # Submit votes to the database #
