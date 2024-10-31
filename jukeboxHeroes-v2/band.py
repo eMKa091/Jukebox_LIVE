@@ -21,4 +21,4 @@ def band_page():
         """
         st.markdown(styled_content, unsafe_allow_html=True)
     else:
-        st.info("No playlist content defined yet.")
+        st.info("Playlist nebyl definován.")

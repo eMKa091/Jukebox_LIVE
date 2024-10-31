@@ -21,12 +21,12 @@ def voting_page():
         return
 
     event_id, event_name, round_count, voting_active, current_round = event
-    st.title(f"Vote for your favorite songs")
+    st.title(f"Hlasuj pro své oblíbené písně!")
 
     # User identification
-    user_name = st.text_input("First, enter your name to vote")
+    user_name = st.text_input("Zadej své jméno")
     if not user_name:
-        st.warning("Please enter your name to vote.")
+        st.warning("Před hlasováním musíš zadat své jméno.")
         return
 
     # Initialize voting status tracking for this event and user if not already done
@@ -35,16 +35,16 @@ def voting_page():
 
     # Check if the user has already voted in the current round
     if event_id in st.session_state['voted_rounds'] and current_round in st.session_state['voted_rounds'][event_id]:
-        st.success("Thank you for voting in this round!")
+        st.success("Děkujeme za Tvé hlasování")
         return
 
     # Fetch the songs for the current round
     songs = fetch_songs_for_voting(event_id)
     if not songs:
-        st.info("No songs available for voting.")
+        st.info("Žádné písně k hlasování.")
         return
 
-    st.subheader(f"Voting for Round {current_round}")
+    st.subheader(f"Hlasování pro kolo {current_round}")
 
     # Fetch max votes for the current round
     conn = sqlite3.connect(DATABASE)
@@ -60,7 +60,7 @@ def voting_page():
     limit_reached = False  # Flag to indicate if max selection limit is reached
 
     # Inform user of the maximum selection allowed
-    st.write(f"Select up to {current_max_votes} songs:")
+    st.write(f"Maximální počet písní pro hlasování: {current_max_votes} :")
 
     # Display checkboxes for each song
     for song_id, song_title, artist in songs:
@@ -78,20 +78,20 @@ def voting_page():
 
     # Show warning only once if limit has been reached
     if limit_reached:
-        st.warning(f"You've reached the maximum of {current_max_votes} selections.")
+        st.warning(f"Dosáhl jsi limitu pro hlasování: {current_max_votes}.")
 
     # Submit vote button
-    if st.button("Submit Vote"):
+    if st.button("Odešli hlasy!"):
         if selected_songs:
             submit_votes(user_name, event_id, current_round, selected_songs)
             if event_id not in st.session_state['voted_rounds']:
                 st.session_state['voted_rounds'][event_id] = []
             st.session_state['voted_rounds'][event_id].append(current_round)
-            st.success(f"Thank you, {user_name}! You have successfully submitted your vote for {len(selected_songs)} songs.")
+            st.success(f"Děkujeme, {user_name}!")
             st.balloons()  # Optional celebration
             st.rerun()  # Rerun to clear selections
         else:
-            st.warning("Please select at least one song to submit your vote")
+            st.warning("Prosím vyberr alespoň jednu píseň")
 
 # Main page
 if __name__ == "__main__":
