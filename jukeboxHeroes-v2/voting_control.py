@@ -114,19 +114,12 @@ def display_splash_screen(message="Neprobíhá žádné hlasování."):
     songs = fetch_song_list()
 
     if songs:
-        # Initialize session state for popup if not already set
-        if 'show_playlist' not in st.session_state:
-            st.session_state['show_playlist'] = False
-
         # Button to toggle the playlist display
         if st.button("Jaké písně hrajeme?"):
-            st.session_state['show_playlist'] = not st.session_state['show_playlist']
 
-        # Display the playlist in two columns if show_playlist is True
-        if st.session_state['show_playlist']:
+            # Display the playlist in two columns if show_playlist is True
             st.subheader("Náš repertoár")
-        
-        if songs:
+            
             # Split songs into two lists for two columns
             half = len(songs) // 2
             left_songs = songs[:half]
@@ -138,11 +131,11 @@ def display_splash_screen(message="Neprobíhá žádné hlasování."):
             # Display songs in two columns
             with col1:
                 for title, artist in left_songs:
-                    st.write(f"- **{title}** od *{artist}*")
+                    st.write(f"- **{title}** od **{artist}**")
 
             with col2:
                 for title, artist in right_songs:
-                    st.write(f"- **{title}** od *{artist}*")
+                    st.write(f"- **{title}** od **{artist}**")
 
 
 ################################
