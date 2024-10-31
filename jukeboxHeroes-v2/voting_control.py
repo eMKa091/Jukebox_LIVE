@@ -131,11 +131,11 @@ def display_splash_screen(message="Neprobíhá žádné hlasování."):
             # Display songs in two columns
             with col1:
                 for title, artist in left_songs:
-                    st.write(f"- **{title}** od **{artist}**")
+                    st.write(f"- **{title}** od *{artist}*")
 
             with col2:
                 for title, artist in right_songs:
-                    st.write(f"- **{title}** od **{artist}**")
+                    st.write(f"- **{title}** od *{artist}*")
 
 
 ################################
