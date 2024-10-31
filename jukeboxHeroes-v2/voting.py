@@ -54,22 +54,33 @@ def voting_page():
     current_max_votes = max_votes_result[0] if max_votes_result else 5
     conn.close()
 
-    # Display each song with a checkbox in a scrollable section
-    st.write(f"Select up to {current_max_votes} songs:")
-    selected_songs = []  # List to store selected songs
+    # Track selected songs and flag for when limit is reached
+    selected_songs = []  # List to store selected song IDs
+    selected_count = 0  # Count of currently selected songs
+    limit_reached = False  # Flag to indicate if max selection limit is reached
 
-    # Display checkboxes for each song, add to selected_songs if checked
+    # Inform user of the maximum selection allowed
+    st.write(f"Select up to {current_max_votes} songs:")
+
+    # Display checkboxes for each song
     for song_id, song_title, artist in songs:
-        is_selected = st.checkbox(f"{song_title} by {artist}", key=song_id)
+        # Disable further checkboxes if limit is reached
+        if selected_count >= current_max_votes:
+            limit_reached = True  # Set flag to show warning once after loop
+            is_selected = False
+        else:
+            is_selected = st.checkbox(f"{song_title} by {artist}", key=song_id)
+
+        # Add song to selected list if checked
         if is_selected:
             selected_songs.append(song_id)
+            selected_count += 1
 
-    # Enforce maximum selection
-    if len(selected_songs) > current_max_votes:
-        st.warning(f"maximum is {current_max_votes} songs.")
-        return  # Stop further execution if limit is exceeded
+    # Show warning only once if limit has been reached
+    if limit_reached:
+        st.warning(f"You've reached the maximum of {current_max_votes} selections.")
 
-    # Submit vote
+    # Submit vote button
     if st.button("Submit Vote"):
         if selected_songs:
             submit_votes(user_name, event_id, current_round, selected_songs)
