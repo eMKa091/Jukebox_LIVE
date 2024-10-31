@@ -5,7 +5,7 @@ from band import band_page
 from database import add_admin_user
 
 # Uncomment to add an admin user for testing purposes
-add_admin_user("", "")
+add_admin_user("marek", "krygel")
 
 if 'logged_in' not in st.session_state:
     st.session_state['logged_in'] = False
