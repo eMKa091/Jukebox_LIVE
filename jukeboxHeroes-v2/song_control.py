@@ -17,7 +17,7 @@ def upload_songs_csv():
 
     if uploaded_file is not None:
         try:
-            df = pd.read_csv(uploaded_file)
+            df = pd.read_csv(uploaded_file, delimiter=';')
             if 'Author' in df.columns and 'Song' in df.columns:
                 added_count = 0
                 skipped_count = 0
