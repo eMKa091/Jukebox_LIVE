@@ -1,6 +1,7 @@
 import streamlit as st
 import sqlite3
 import time
+from gitHubControl import backup_and_upload
 from database import *
 from song_control import *
 from voting_control import *
@@ -303,10 +304,21 @@ def admin_page():
         elif menu_selection == "Data Backup":
             st.subheader(":back: :up: the database")
             
-            # Backup functionality (simplified for demonstration purposes)
+            # Backup functionality
             if st.button("Backup now"):
+                with st.spinner("Creating backup..."):
+                    backup_and_upload()  # Create and upload the backup to GitHub
+
+                # Optionally allow the user to download the backup file locally as well
                 with open(DATABASE, "rb") as file:
-                    st.download_button(label="Download backup", data=file, file_name="votes_backup.db")
+                    st.download_button(label="Download backup", data=file, file_name="backup.db")
+
+######################
+# RESTORE OPERATIONS #
+######################
+        elif menu_selection == "Data Restore":
+            st.subheader("Restore database")
+
 
     else:
         admin_login()
