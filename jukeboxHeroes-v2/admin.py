@@ -11,7 +11,12 @@ from band_control import *
 
 # Initialize the database
 DATABASE = 'votes.db'
-init_db()
+
+if not os.path.exists(DATABASE):
+    st.write ("Did not find DB")
+    init_db()
+else: 
+    st.write ("DB found!")
 
 # Load the events once and use throughout the app
 def load_events():

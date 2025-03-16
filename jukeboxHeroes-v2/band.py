@@ -1,10 +1,18 @@
 import streamlit as st
 from band_control import get_band_page_content
 from database import init_db
+import os
+
+DATABASE = 'votes.db'
 
 def band_page():
     st.title("Band Page")
-    init_db()
+    if not os.path.exists(DATABASE):
+        st.write ("Did not find DB")
+        init_db()
+    else: 
+        st.write ("DB found!")
+        init_db()
 
     # Retrieve the current playlist content from the database
     playlist_content = get_band_page_content()
