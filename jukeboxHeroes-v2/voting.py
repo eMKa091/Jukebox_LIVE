@@ -2,6 +2,7 @@ import sqlite3
 import streamlit as st
 from voting_control import display_splash_screen, submit_votes
 from song_control import fetch_songs_for_voting
+from gitHubControl import backup_and_upload
 
 DATABASE = 'votes.db'
 
@@ -84,6 +85,7 @@ def voting_page():
     if st.button("Odešli hlasy!"):
         if selected_songs:
             submit_votes(user_name, event_id, current_round, selected_songs)
+            backup_and_upload()
             if event_id not in st.session_state['voted_rounds']:
                 st.session_state['voted_rounds'][event_id] = []
             st.session_state['voted_rounds'][event_id].append(current_round)

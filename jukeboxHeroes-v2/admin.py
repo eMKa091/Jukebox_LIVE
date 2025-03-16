@@ -307,11 +307,11 @@ def admin_page():
             # Backup functionality
             if st.button("Backup now"):
                 with st.spinner("Creating backup..."):
-                    backup_and_upload()  # Create and upload the backup to GitHub
+                    backup_and_upload()
 
                 # Optionally allow the user to download the backup file locally as well
                 with open(DATABASE, "rb") as file:
-                    st.download_button(label="Download backup", data=file, file_name="backup.db")
+                    st.download_button(label="Download backup", data=file, file_name="votes.db")
 
 ######################
 # RESTORE OPERATIONS #
