@@ -8,8 +8,7 @@ from gh_utils import download_database_from_github
 DATABASE = 'votes.db'
 
 def init_db():
-    if download_database_from_github():
-        st.success(f"Backup from GitHub restored successfully to {DATABASE}.")
+    download_database_from_github()
 
 def init_empty_db():
     conn = sqlite3.connect(DATABASE)
