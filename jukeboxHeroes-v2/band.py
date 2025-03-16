@@ -8,10 +8,6 @@ DATABASE = 'votes.db'
 def band_page():
     st.title("Band Page")
     if not os.path.exists(DATABASE):
-        st.write ("Did not find DB")
-        init_db()
-    else: 
-        st.write ("DB found!")
         init_db()
 
     # Retrieve the current playlist content from the database
