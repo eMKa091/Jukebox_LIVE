@@ -23,7 +23,7 @@ def upload_backup_to_github(backup_file):
         file_content = base64.b64encode(file.read()).decode('utf-8')
 
     # GitHub API endpoint to upload files
-    url = f'https://api.github.com/repos/{GITHUB_USERNAME}/{GITHUB_REPO}/contents/backup/{os.path.basename(backup_file)}'
+    url = f'https://api.github.com/repos/{GITHUB_USERNAME}/{GITHUB_REPO}/contents/jukeboxHeroes-v2/backups/{os.path.basename(backup_file)}'
     
     # Prepare the headers for authentication
     headers = {
