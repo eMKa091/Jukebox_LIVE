@@ -2,26 +2,14 @@ import sqlite3
 import streamlit as st
 import pandas as pd
 import os
-import gitHubControl
 from hashlib import sha256
-from gitHubControl import *
+from gh_utils import download_database_from_github
 
 DATABASE = 'votes.db'
 
 def init_db():
-    # If the database doesn't exist, try to download the backup from GitHub
-    if not os.path.exists(DATABASE):
-        # Attempt to fetch the backup from GitHub
-        st.info("Database not found. Attempting to download backup from GitHub...")
-        if download_database_from_github():
-            st.success(f"Backup from GitHub restored successfully to {DATABASE}.")
-        else:
-            st.error("Failed to download the backup from GitHub. Initializing a new database instead.")
-            init_empty_db()
-    else:
-        st.info(f"Database '{DATABASE}' found, no need to download from GitHub.")
-        # If the DB already exists, no need to download, just ensure it's initialized
-        init_empty_db()
+    if download_database_from_github():
+        st.success(f"Backup from GitHub restored successfully to {DATABASE}.")
 
 def init_empty_db():
     conn = sqlite3.connect(DATABASE)

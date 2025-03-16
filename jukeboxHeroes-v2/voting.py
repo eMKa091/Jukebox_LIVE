@@ -3,8 +3,10 @@ import streamlit as st
 from voting_control import display_splash_screen, submit_votes
 from song_control import fetch_songs_for_voting
 from gitHubControl import backup_and_upload
+from database import init_db
 
 DATABASE = 'votes.db'
+init_db()
 
 def get_active_event():
     conn = sqlite3.connect(DATABASE)
