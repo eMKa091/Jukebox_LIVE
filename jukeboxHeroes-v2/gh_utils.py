@@ -13,7 +13,7 @@ def download_database_from_github():
     # URL to access the GitHub content
     url = f'https://api.github.com/repos/{GITHUB_USERNAME}/{GITHUB_REPO}/contents/{BACKUP_FOLDER}/{DB_PATH}?ref=main'
     
-    headers = {'Authorization': 'token YOUR_GITHUB_TOKEN'}  # Replace YOUR_GITHUB_TOKEN with your GitHub token
+    headers = {'Authorization': 'token YOUR_GITHUB_TOKEN'}
     response = requests.get(url, headers=headers)
 
     if response.status_code == 200:
