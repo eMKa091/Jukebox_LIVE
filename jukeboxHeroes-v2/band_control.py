@@ -1,6 +1,5 @@
 import sqlite3
 import streamlit as st
-from gitHubControl import backup_and_upload
 
 DATABASE = 'votes.db'
 
@@ -22,7 +21,6 @@ def update_band_page_content(content):
     c.execute("INSERT INTO band_page_content (content) VALUES (?)", (content,))
     conn.commit()
     conn.close()
-    backup_and_upload()
 
 def admin_band_page_control():
     st.subheader("Please define the content for the band page")
