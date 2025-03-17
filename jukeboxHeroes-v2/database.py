@@ -519,4 +519,4 @@ file_path = Path("/mount/src/jukebox_live/jukeboxHeroes-v2/votes.db")
 
 if __name__ == "__main__":
     init_empty_db()
-    init_db()
+    #init_db()
