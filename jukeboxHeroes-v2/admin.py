@@ -147,6 +147,7 @@ def admin_page():
                     for event_id, event_name, date in events:
                         if st.button(f"Delete event {event_name} - happening on {date}", key=f"delete_{event_id}"):
                             delete_event(event_id)
+                            backup_and_upload
                             st.rerun()
 
 #############################
@@ -227,6 +228,7 @@ def admin_page():
                     conn.commit()
                     conn.close()
                     st.success(f"Max votes for Round {selected_round} updated to {new_max_votes}.")
+                    backup_and_upload()
 
                 # Voting controls for the selected round
                 if selected_round == voting_round:
@@ -269,7 +271,6 @@ def admin_page():
                     else:
                         if st.button("Start voting"):
                             start_voting(event_id_selected, voting_round)
-                            backup_and_upload()
                             st.success(f"Voting started for event '{event_name_selected}', round {voting_round}.")
 
                             # Update the database
@@ -278,6 +279,7 @@ def admin_page():
                             c.execute("UPDATE events SET round_status = 'ongoing', voting_active = 1 WHERE id = ?", (event_id_selected,))
                             conn.commit()
                             conn.close()
+                            backup_and_upload()
                             st.rerun()
 
                 # Past rounds: Only show that the round is completed
@@ -324,13 +326,6 @@ def admin_page():
                 # Optionally allow the user to download the backup file locally as well
                 with open(DATABASE, "rb") as file:
                     st.download_button(label="Download backup", data=file, file_name="votes.db")
-
-######################
-# RESTORE OPERATIONS #
-######################
-        elif menu_selection == "Data Restore":
-            st.subheader("Restore database")
-
 
     else:
         admin_login()
