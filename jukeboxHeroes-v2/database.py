@@ -1,17 +1,14 @@
 import sqlite3
 import streamlit as st
 import pandas as pd
-import os
+from pathlib import Path
 from hashlib import sha256
 from gh_utils import download_database_from_github
 
 DATABASE = 'votes.db'
 
 def init_db():
-    if os.path.exists(DATABASE):
-        st.write("DB existuje, Marku!")
-    else:
-        download_database_from_github()
+    download_database_from_github()
 
 def init_empty_db():
     conn = sqlite3.connect(DATABASE)
@@ -518,6 +515,11 @@ def add_song_back_to_event(event_id, song_id, round_id):
     conn.commit()
     conn.close()
 
-# Initialize the database when this module is run
+file_path = Path("votes.db")
+
 if __name__ == "__main__":
-    init_db()
+    if file_path.exists():
+        st.success(f"Databaze nalezena, vse ok")
+    else:
+        st.error(f"Databaze nenalezena.")
+        init_db()
