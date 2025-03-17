@@ -8,7 +8,10 @@ from gh_utils import download_database_from_github
 DATABASE = 'votes.db'
 
 def init_db():
-    download_database_from_github()
+    if os.path.exists(DATABASE):
+        st.write("DB existuje, Marku!")
+    else:
+        download_database_from_github()
 
 def init_empty_db():
     conn = sqlite3.connect(DATABASE)
