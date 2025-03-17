@@ -515,7 +515,5 @@ def add_song_back_to_event(event_id, song_id, round_id):
     conn.commit()
     conn.close()
 
-file_path = Path("/mount/src/jukebox_live/jukeboxHeroes-v2/votes.db")
-
 if __name__ == "__main__":
     init_db()
