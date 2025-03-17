@@ -522,4 +522,5 @@ if __name__ == "__main__":
         st.success(f"Databaze nalezena, vse ok")
     else:
         st.error(f"Databaze nenalezena.")
+        init_empty_db()
         init_db()
