@@ -12,9 +12,6 @@ from band_control import *
 # Initialize the database
 DATABASE = 'votes.db'
 
-if not os.path.exists(DATABASE):
-    init_db()
-
 # Load the events once and use throughout the app
 def load_events():
     conn = sqlite3.connect(DATABASE)
@@ -55,7 +52,6 @@ def admin_page():
                 # Upload new song list
                 upload_songs_csv()
                 if st.button("Add to DB (only refreshes page in reality"):
-                    backup_and_upload()
                     st.rerun()
                 
             else:
@@ -82,12 +78,10 @@ def admin_page():
                 st.warning(":warning: Do not delete songs if you have any events to manage")
                 if st.button("Delete all songs from DB"):
                     remove_all_songs()
-                    backup_and_upload()
                     st.rerun()
                 
                 upload_songs_csv()
                 if st.button("Add to DB (only refreshes page in reality"):
-                    backup_and_upload()
                     st.rerun()
 
 ####################
@@ -115,20 +109,17 @@ def admin_page():
                         if create_event_button and new_event_name and new_event_date:
                             event_id = create_event(new_event_name, formatted_date, new_event_rounds)
                             st.success(f"Event '{new_event_name}' created with ID {event_id}")
-                            backup_and_upload()
 
                             if new_event_rounds == 1:
                             # Add all songs to the event
                                 add_all_songs_to_event(event_id)
                                 st.success(f"All songs assigned to event by default.")
-                                backup_and_upload()
                                 time.sleep(2)
 
                             else:
                                 round_id = 1
                                 add_all_songs_to_event(event_id, round_id)
                                 st.success(f"All songs assigned to first round by default.")
-                                backup_and_upload()
                                 time.sleep(2)
                             
                             # Reload events after creation
@@ -147,7 +138,6 @@ def admin_page():
                     for event_id, event_name, date in events:
                         if st.button(f"Delete event {event_name} - happening on {date}", key=f"delete_{event_id}"):
                             delete_event(event_id)
-                            backup_and_upload
                             st.rerun()
 
 #############################
@@ -228,7 +218,6 @@ def admin_page():
                     conn.commit()
                     conn.close()
                     st.success(f"Max votes for Round {selected_round} updated to {new_max_votes}.")
-                    backup_and_upload()
 
                 # Voting controls for the selected round
                 if selected_round == voting_round:
@@ -244,7 +233,6 @@ def admin_page():
                             c.execute("UPDATE events SET round_status = 'completed', voting_active = 0 WHERE id = ?", (event_id_selected,))
                             conn.commit()
                             conn.close()
-                            backup_and_upload()
                             st.rerun()
 
                     elif round_status == 'completed':
@@ -257,8 +245,8 @@ def admin_page():
                             c.execute("UPDATE events SET voting_round = ?, round_status = 'not_started' WHERE id = ?", (voting_round + 1, event_id_selected))
                             conn.commit()
                             conn.close()
-                            backup_and_upload()
                             st.rerun()
+
                         elif voting_round == round_count:
                             # Set last_round if this is the final round
                             conn = sqlite3.connect(DATABASE)
@@ -266,7 +254,6 @@ def admin_page():
                             c.execute("UPDATE events SET last_round = 1 WHERE id = ?", (event_id_selected,))
                             conn.commit()
                             conn.close()
-                            backup_and_upload()
 
                     else:
                         if st.button("Start voting"):
@@ -279,7 +266,6 @@ def admin_page():
                             c.execute("UPDATE events SET round_status = 'ongoing', voting_active = 1 WHERE id = ?", (event_id_selected,))
                             conn.commit()
                             conn.close()
-                            backup_and_upload()
                             st.rerun()
 
                 # Past rounds: Only show that the round is completed
