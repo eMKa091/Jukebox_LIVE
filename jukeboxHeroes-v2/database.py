@@ -1,7 +1,6 @@
 import sqlite3
 import streamlit as st
 import pandas as pd
-from pathlib import Path
 from hashlib import sha256
 from gh_utils import download_database_from_github
 
