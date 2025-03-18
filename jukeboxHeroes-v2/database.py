@@ -1,13 +1,23 @@
 import sqlite3
 import streamlit as st
 import pandas as pd
+import shutil
+import os
 from hashlib import sha256
 from gh_utils import download_database_from_github
 
 DATABASE = 'votes.db'
+BACKUP_FILE = './backup-votes.db'
 
-def init_db():
-    download_database_from_github()
+def restore_from_backup():
+    """Restores the database from the backup file."""
+    if os.path.exists(BACKUP_FILE):
+        # Ensure the backup is copied over to the live database
+        shutil.copy(BACKUP_FILE, DATABASE)
+        print("Database restored from backup.")
+    else:
+        print("Backup file does not exist.")
+
 
 def init_empty_db():
     conn = sqlite3.connect(DATABASE)
@@ -114,6 +124,9 @@ def init_empty_db():
 
     conn.commit()
     conn.close()
+    
+    download_database_from_github()
+    restore_from_backup()
 
 def add_admin_user(username, password):
     conn = sqlite3.connect(DATABASE)
@@ -515,4 +528,4 @@ def add_song_back_to_event(event_id, song_id, round_id):
     conn.close()
 
 if __name__ == "__main__":
-    init_db()
+    init_empty_db()

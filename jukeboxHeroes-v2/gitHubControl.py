@@ -84,7 +84,7 @@ def backup_and_upload():
         os.makedirs(BACKUP_DIR)  # Create the directory if it doesn't exist
     
     # Make the backup
-    backup_file = os.path.join(BACKUP_DIR, f"votes.db")
+    backup_file = os.path.join( f"backup-votes.db")
     
     # Copy the database to the backup file
     shutil.copy(DB_PATH, backup_file)

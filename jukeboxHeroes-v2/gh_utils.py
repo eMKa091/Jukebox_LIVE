@@ -7,7 +7,7 @@ GITHUB_TOKEN = os.getenv("GITHUB_TOKEN")
 GITHUB_USERNAME = 'az-fkaw'
 GITHUB_REPO = 'Jukebox_LIVE'
 BACKUP_FOLDER = 'jukeboxHeroes-v2/backups'
-DB_PATH = './votes.db'
+RESTORE_PATH = './backup-votes.db'
 
 def download_database_from_github():
     # URL to access the GitHub content
@@ -26,9 +26,9 @@ def download_database_from_github():
         cleaned_content = file_content.replace("\n", "").replace("\r", "")
         
         # Write the content to the database file
-        with open(DB_PATH, 'wb') as f:
+        with open(RESTORE_PATH, 'wb') as f:
             f.write(base64.b64decode(cleaned_content))
-        print(f"Database downloaded from GitHub: {DB_PATH}")
+        print(f"Database downloaded from GitHub: {RESTORE_PATH}")
 
     else:
         print(f"Failed to download database from GitHub: {response.status_code}")
