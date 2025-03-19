@@ -9,16 +9,20 @@ from band_control import *
 import shutil
 import urllib.parse
 
-BACKUP_DIR = 'backups/'
+BACKUP_DIR = 'jukeboxHeroes-v2/backups/'
 GITHUB_TOKEN = os.getenv("GITHUB_TOKEN")
 GITHUB_USERNAME = 'az-fkaw'
 GITHUB_REPO = 'Jukebox_LIVE'
-BACKUP_FOLDER = 'jukeboxHeroes-v2/backups'
-DB_PATH = 'votes.db'
+BACKUP_FOLDER = 'jukeboxHeroes-v2/backups'  # Correct GitHub backup folder
+DB_PATH = 'votes.db'  # Original database path (not backup-votes.db)
+
+# Ensure the backup directory exists locally
+if not os.path.exists(BACKUP_DIR):
+    os.makedirs(BACKUP_DIR)  # Create the directory if it doesn't exist
 
 # Function to get the sha of an existing file from GitHub
 def get_file_sha_from_github():
-    url = f'https://api.github.com/repos/{GITHUB_USERNAME}/{GITHUB_REPO}/contents/{urllib.parse.quote(BACKUP_FOLDER)}/{urllib.parse.quote("votes.db")}'
+    url = f'https://api.github.com/repos/{GITHUB_USERNAME}/{GITHUB_REPO}/contents/{urllib.parse.quote(BACKUP_FOLDER)}/{urllib.parse.quote("backup-votes.db")}'
     
     headers = {
         'Authorization': f'token {GITHUB_TOKEN}',
@@ -78,16 +82,25 @@ def upload_backup_to_github(backup_file):
         st.error(response.json())
 
 # Function to create and upload the database backup
+# Ensure the backups directory exists before copying the file
 def backup_and_upload():
-    # Ensure the backups directory exists
+    # Ensure the backups directory exists locally
     if not os.path.exists(BACKUP_DIR):
         os.makedirs(BACKUP_DIR)  # Create the directory if it doesn't exist
-    
-    # Make the backup
-    backup_file = os.path.join( f"backup-votes.db")
-    
-    # Copy the database to the backup file
+
+    # Generate the backup file path under the backups directory
+    backup_file = os.path.join(BACKUP_DIR, "backup-votes.db")  # Corrected backup file path
+
+    # Check if the original database file exists before attempting to copy
+    if not os.path.exists(DB_PATH):
+        st.error(f"The database file {DB_PATH} does not exist.")
+        return
+
+    # Copy the original database to the backup file
     shutil.copy(DB_PATH, backup_file)
     
     # Upload the backup to GitHub
     upload_backup_to_github(backup_file)
+
+# Call backup_and_upload function to make and upload the backup
+backup_and_upload()
