@@ -7,125 +7,156 @@ from hashlib import sha256
 from gh_utils import download_database_from_github
 
 DATABASE = 'votes.db'
-BACKUP_FILE = './backup-votes.db'
+BACKUP_FILE = './backups/backup-votes.db'
 
 def restore_from_backup():
     """Restores the database from the backup file."""
+    print(f"Checking if the backup file exists at {BACKUP_FILE}")
     if os.path.exists(BACKUP_FILE):
-        # Ensure the backup is copied over to the live database
+        print(f"Restoring {DATABASE} from {BACKUP_FILE}")
         shutil.copy(BACKUP_FILE, DATABASE)
         print("Database restored from backup.")
     else:
         print("Backup file does not exist.")
 
+def check_database_file():
+    """Checks if the database file exists and has tables."""
+    print(f"Checking if {DATABASE} exists...")
+    if os.path.exists(DATABASE):
+        print(f"{DATABASE} exists.")
+        # Check if the database contains tables
+        conn = sqlite3.connect(DATABASE)
+        c = conn.cursor()
+        try:
+            c.execute("SELECT name FROM sqlite_master WHERE type='table';")
+            tables = c.fetchall()
+            if tables:
+                print(f"Tables in database: {tables}")
+            else:
+                print(f"No tables found in the database.")
+        except sqlite3.Error as e:
+            print(f"Error while querying the database: {e}")
+        finally:
+            conn.close()
+    else:
+        print(f"{DATABASE} does not exist.")
+
 
 def init_empty_db():
-    conn = sqlite3.connect(DATABASE)
-    c = conn.cursor()
+    """Initializes the empty database with necessary tables."""
+    print("Initializing the database...")
+    # First, download the database from GitHub
+    download_database_from_github()
 
-    c.execute('''
-        CREATE TABLE IF NOT EXISTS events (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            name TEXT,
-            date TEXT,
-            round_count INTEGER DEFAULT 1,
-            current_round INTEGER DEFAULT 1,
-            voting_round INTEGER DEFAULT 1,
-            voting_active BOOLEAN DEFAULT 0,
-            round_status TEXT DEFAULT 'not_started',
-            last_round BOOLEAN DEFAULT 0
-        )
-    ''')
-    # Create 'rounds' table
-    c.execute('''
-        CREATE TABLE IF NOT EXISTS rounds (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            event_id INTEGER,
-            round_number INTEGER,
-            max_votes INTEGER DEFAULT 5,
-            description TEXT,
-            FOREIGN KEY (event_id) REFERENCES events(id)
-        )
-    ''')
+    # Check if the downloaded database has any tables
+    check_database_file()
+    
+    if not os.path.exists(DATABASE):
+        conn = sqlite3.connect(DATABASE)
+        c = conn.cursor()
 
-    # Create 'votes' table
-    c.execute('''
-        CREATE TABLE IF NOT EXISTS votes (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            user_id TEXT,
-            song TEXT,
-            event_id INTEGER,
-            round_id INTEGER,
-            date TEXT,
-            FOREIGN KEY (event_id) REFERENCES events(id),
-            FOREIGN KEY (round_id) REFERENCES rounds(id)
-        )
-    ''')
-
-    # Create 'played_songs' table
-    c.execute('''
-        CREATE TABLE IF NOT EXISTS played_songs (
-            song_id INTEGER,
-            event_id INTEGER,
-            round_id INTEGER,
-            played BOOLEAN,
-            PRIMARY KEY (song_id, event_id, round_id),
-            FOREIGN KEY (event_id) REFERENCES events(id),
-            FOREIGN KEY (round_id) REFERENCES rounds(id)
-        )
-    ''')
-
-    # Create 'admin_users' table for admin authentication
-    c.execute('''
-        CREATE TABLE IF NOT EXISTS admin_users (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            username TEXT UNIQUE,
-            password_hash TEXT,
-            role TEXT
-        )
-    ''')
-
-    # Create 'admin_settings' table for storing admin-controlled settings
-    c.execute('''
-        CREATE TABLE IF NOT EXISTS admin_settings (
-            setting_key TEXT PRIMARY KEY,
-            setting_value TEXT
-        )
-    ''')
-
-    # Create 'songs' table to store song details
-    c.execute('''
-        CREATE TABLE IF NOT EXISTS songs (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            title TEXT,
-            artist TEXT
-        )
-    ''')
-
-    # Create 'event_songs' table to link songs to events
-    c.execute('''
-        CREATE TABLE IF NOT EXISTS event_songs (
-            event_id INTEGER,
-            song_id INTEGER,
-            round_id INTEGER,
-            played BOOLEAN DEFAULT 0,
-            removed BOOLEAN DEFAULT 0,
-            PRIMARY KEY (event_id, song_id, round_id),
-            FOREIGN KEY (event_id) REFERENCES events(id),
-            FOREIGN KEY (song_id) REFERENCES songs(id)
-        )
-    ''')
-    c.execute('''
-        CREATE TABLE IF NOT EXISTS band_page_content (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            content TEXT
-        )
+        c.execute('''
+            CREATE TABLE IF NOT EXISTS events (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name TEXT,
+                date TEXT,
+                round_count INTEGER DEFAULT 1,
+                current_round INTEGER DEFAULT 1,
+                voting_round INTEGER DEFAULT 1,
+                voting_active BOOLEAN DEFAULT 0,
+                round_status TEXT DEFAULT 'not_started',
+                last_round BOOLEAN DEFAULT 0
+            )
+        ''')
+        # Create 'rounds' table
+        c.execute('''
+            CREATE TABLE IF NOT EXISTS rounds (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                event_id INTEGER,
+                round_number INTEGER,
+                max_votes INTEGER DEFAULT 5,
+                description TEXT,
+                FOREIGN KEY (event_id) REFERENCES events(id)
+            )
         ''')
 
-    conn.commit()
-    conn.close()
+        # Create 'votes' table
+        c.execute('''
+            CREATE TABLE IF NOT EXISTS votes (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id TEXT,
+                song TEXT,
+                event_id INTEGER,
+                round_id INTEGER,
+                date TEXT,
+                FOREIGN KEY (event_id) REFERENCES events(id),
+                FOREIGN KEY (round_id) REFERENCES rounds(id)
+            )
+        ''')
+
+        # Create 'played_songs' table
+        c.execute('''
+            CREATE TABLE IF NOT EXISTS played_songs (
+                song_id INTEGER,
+                event_id INTEGER,
+                round_id INTEGER,
+                played BOOLEAN,
+                PRIMARY KEY (song_id, event_id, round_id),
+                FOREIGN KEY (event_id) REFERENCES events(id),
+                FOREIGN KEY (round_id) REFERENCES rounds(id)
+            )
+        ''')
+
+        # Create 'admin_users' table for admin authentication
+        c.execute('''
+            CREATE TABLE IF NOT EXISTS admin_users (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                username TEXT UNIQUE,
+                password_hash TEXT,
+                role TEXT
+            )
+        ''')
+
+        # Create 'admin_settings' table for storing admin-controlled settings
+        c.execute('''
+            CREATE TABLE IF NOT EXISTS admin_settings (
+                setting_key TEXT PRIMARY KEY,
+                setting_value TEXT
+            )
+        ''')
+
+        # Create 'songs' table to store song details
+        c.execute('''
+            CREATE TABLE IF NOT EXISTS songs (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                title TEXT,
+                artist TEXT
+            )
+        ''')
+
+        # Create 'event_songs' table to link songs to events
+        c.execute('''
+            CREATE TABLE IF NOT EXISTS event_songs (
+                event_id INTEGER,
+                song_id INTEGER,
+                round_id INTEGER,
+                played BOOLEAN DEFAULT 0,
+                removed BOOLEAN DEFAULT 0,
+                PRIMARY KEY (event_id, song_id, round_id),
+                FOREIGN KEY (event_id) REFERENCES events(id),
+                FOREIGN KEY (song_id) REFERENCES songs(id)
+            )
+        ''')
+        c.execute('''
+            CREATE TABLE IF NOT EXISTS band_page_content (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                content TEXT
+            )
+            ''')
+
+        conn.commit()
+        conn.close()
     
-    download_database_from_github()
     restore_from_backup()
 
 def add_admin_user(username, password):
