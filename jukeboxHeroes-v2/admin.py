@@ -314,7 +314,7 @@ def admin_page():
 
                 # Optionally allow the user to download the backup file locally as well
                 with open(DATABASE, "rb") as file:
-                    st.download_button(label="Download backup", data=file, file_name="votes.db")
+                    st.download_button(label="Download backup", data=file, file_name="backup-votes.db")
 
     else:
         admin_login()

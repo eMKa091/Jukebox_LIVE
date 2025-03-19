@@ -100,6 +100,3 @@ def backup_and_upload():
     
     # Upload the backup to GitHub
     upload_backup_to_github(backup_file)
-
-# Call backup_and_upload function to make and upload the backup
-backup_and_upload()
