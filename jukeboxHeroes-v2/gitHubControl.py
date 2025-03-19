@@ -93,7 +93,6 @@ def backup_and_upload():
 
     # Check if the original database file exists before attempting to copy
     if not os.path.exists(DB_PATH):
-        st.error(f"The database file {DB_PATH} does not exist.")
         return
 
     # Copy the original database to the backup file

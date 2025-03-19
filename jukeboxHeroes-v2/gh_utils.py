@@ -27,6 +27,9 @@ def download_database_from_github():
         # Clean up the file content by removing newline characters (if any)
         cleaned_content = file_content.replace("\n", "").replace("\r", "")
         
+        # Ensure the backup directory exists
+        os.makedirs(os.path.dirname(BACKUP_FILE), exist_ok=True)
+
         # Decode the base64 content and write to the backup file
         try:
             decoded_content = base64.b64decode(cleaned_content)

@@ -52,6 +52,7 @@ def init_empty_db():
     check_database_file()
     
     if not os.path.exists(DATABASE):
+        print(f"{DATABASE} doesn't exist, creating new one...")
         conn = sqlite3.connect(DATABASE)
         c = conn.cursor()
 

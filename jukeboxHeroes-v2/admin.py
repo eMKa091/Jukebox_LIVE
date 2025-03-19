@@ -22,6 +22,9 @@ def load_events():
     return events
 
 def admin_page():
+    if not os.path.exists(DATABASE):
+        init_empty_db()
+        
     if 'logged_in' in st.session_state and st.session_state['logged_in']:
 
         # Initialize events

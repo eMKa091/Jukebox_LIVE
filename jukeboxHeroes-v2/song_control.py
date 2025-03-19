@@ -2,7 +2,6 @@ import streamlit as st
 import pandas as pd
 import sqlite3
 from database import *
-from gitHubControl import backup_and_upload
 
 DATABASE = 'votes.db'
 
@@ -12,7 +11,6 @@ def upload_songs_csv():
 
     # CSV Upload
     uploaded_file = st.file_uploader("Choose a CSV file", type="csv")
-    backup_and_upload()
 
     # Initialize session state for storing the uploaded data
     if 'uploaded_songs' not in st.session_state:
