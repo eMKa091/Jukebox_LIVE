@@ -1,0 +1,61 @@
+{% extends "admin/base.html" %}
+{% block title %}Events — Jukebox LIVE{% endblock %}
+{% block content %}
+
+<h1>Events</h1>
+
+{% if live %}
+<div class="notice">
+  <p><b>{{ live.name }}</b> is on air right now.
+     <a href="/admin/events/{{ live.id }}">Open the console →</a></p>
+</div>
+{% endif %}
+
+<div class="card">
+  <h3 style="margin-top:0">New event</h3>
+  {% if song_count == 0 %}
+    <p>Upload the song list first — <a href="/admin/songs">Songs</a>.</p>
+  {% else %}
+  <form method="post" action="/admin/events">
+    <div class="grid2">
+      <label class="field"><span>Name</span>
+        <input type="text" name="name" required placeholder="Oslava Rychvald"></label>
+      <label class="field"><span>Venue</span>
+        <input type="text" name="venue" placeholder="Kulturní dům"></label>
+      <label class="field"><span>Starts</span>
+        <input type="datetime-local" name="starts_at" value="{{ default_start }}" required></label>
+      <label class="field"><span>Rounds</span>
+        <input type="number" name="round_count" value="1" min="1" max="10"></label>
+      <label class="field"><span>Votes per person, per round</span>
+        <input type="number" name="max_votes" value="5" min="1" max="50"></label>
+    </div>
+    <button class="btn" type="submit">Create event</button>
+    <p class="meta" style="margin:10px 0 0">All {{ song_count }} songs are assigned to round 1 automatically.</p>
+  </form>
+  {% endif %}
+</div>
+
+{% if events %}
+<div class="tablewrap" style="margin-top:20px">
+  <table>
+    <thead><tr><th>Event</th><th>Starts</th><th>State</th><th class="num">Voters</th><th class="num">Votes</th><th></th></tr></thead>
+    <tbody>
+      {% for row in events %}
+      <tr>
+        <td><a href="/admin/events/{{ row.event.id }}"><b>{{ row.event.name }}</b></a>
+            {% if row.event.venue %}<div class="meta">{{ row.event.venue }}</div>{% endif %}</td>
+        <td>{{ row.starts_local }}</td>
+        <td><span class="chip {{ row.event.state }}">{{ row.event.state }}</span></td>
+        <td class="num">{{ row.stats.voters }}</td>
+        <td class="num">{{ row.stats.votes }}</td>
+        <td><a class="btn ghost sm" href="/admin/events/{{ row.event.id }}">Open</a></td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}
+<p class="meta" style="margin-top:20px">No events yet.</p>
+{% endif %}
+
+{% endblock %}

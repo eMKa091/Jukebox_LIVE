@@ -59,9 +59,12 @@ the app is compromise of the repository.
 No token literal appears anywhere in git history — that was checked and the
 history is clean. The exposure is runtime, not committed.
 
-Also note `gh_utils.py:7` targets `az-fkaw/Jukebox_LIVE` while this clone's
-origin is `eMKa091/Jukebox_LIVE`. Confirm which repository the deployment
-actually writes to before touching either.
+Note `gh_utils.py:7` has `GITHUB_USERNAME = 'az-fkaw'` hardcoded, but the
+deployment writes to **`eMKa091/Jukebox_LIVE`** — confirmed by the operator on
+2026-09-23. The token to revoke at decommission is the one with write access to
+that repository. The constant in the source is wrong and has been since the
+fork; it does not matter now, because nothing in the rebuild writes to a
+repository at runtime.
 
 ## F3 — The band page is unauthenticated and renders raw HTML
 **High.** `index.py:18`, `band.py:24`.

@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block wrapclass %} wide{% endblock %}
+{% block chrome %}
+<header class="adminbar">
+  <div class="wrap wide">
+    <div class="brand">Jukebox<span> LIVE</span></div>
+    <a href="/admin" class="{{ 'on' if nav == 'events' }}">Events</a>
+    <a href="/admin/songs" class="{{ 'on' if nav == 'songs' }}">Songs</a>
+    <div class="spacer" style="flex:1"></div>
+    <span class="meta">{{ admin_user }}</span>
+    <form method="post" action="/admin/logout" style="margin:0">
+      <button class="btn ghost sm" type="submit">Sign out</button>
+    </form>
+  </div>
+</header>
+{% endblock %}

@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block title %}{{ event.name }} — hlasování{% endblock %}
+{% block topbar_extra %}<span class="livedot"><i></i> Živě</span>{% endblock %}
+{% block content %}
+
+<h1>Hlasuj pro své oblíbené písně</h1>
+<p class="lead">{{ event.name }}{% if event.venue %} · {{ event.venue }}{% endif %}</p>
+
+<form method="post" action="/e/{{ event.slug }}/join" class="card">
+  <label class="field">
+    <span>Jak Ti máme říkat?</span>
+    <input type="text" name="display_name" maxlength="40" required autofocus
+           autocomplete="nickname" value="{{ display_name or '' }}"
+           placeholder="Tvoje přezdívka">
+  </label>
+  <p class="meta">Jméno uvidí jen kapela. Hlasovat můžeš jednou za kolo.</p>
+  <button class="btn wide" type="submit">Pokračovat</button>
+</form>
+
+{% endblock %}

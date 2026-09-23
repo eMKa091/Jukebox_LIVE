@@ -1,0 +1,248 @@
+/* Jukebox LIVE.
+ *
+ * Designed for the room it is used in: dark, one-handed, on a phone with two
+ * bars of signal. Dark is the default rather than a preference -- a white page
+ * at full brightness in a dark venue gets closed.
+ */
+
+:root {
+  --bg: #0c1110;
+  --surface: #141b19;
+  --surface-2: #1c2523;
+  --line: #27322f;
+  --line-strong: #3a4844;
+  --ink: #e9efec;
+  --muted: #9aaba5;
+  --faint: #73847e;
+  --accent: #46c79a;
+  --accent-ink: #0b1714;
+  --accent-soft: #143028;
+  --warn: #e0ad5c;
+  --danger: #f0897e;
+  --danger-soft: #3a1c19;
+  --radius: 10px;
+  --tap: 48px;               /* minimum touch target */
+}
+
+* { box-sizing: border-box; }
+
+html { -webkit-text-size-adjust: 100%; }
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font: 16px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  overscroll-behavior-y: none;
+}
+
+.wrap { max-width: 720px; margin: 0 auto; padding: 0 16px; }
+
+/* ---------------------------------------------------------------- header */
+.topbar {
+  position: sticky; top: 0; z-index: 20;
+  background: color-mix(in srgb, var(--bg) 92%, transparent);
+  backdrop-filter: blur(8px);
+  border-bottom: 1px solid var(--line);
+}
+.topbar .wrap { display: flex; align-items: center; gap: 12px; min-height: 56px; }
+.brand { font-weight: 700; letter-spacing: -.01em; font-size: 17px; }
+.brand span { color: var(--accent); }
+.topbar .spacer { flex: 1; }
+
+.livedot {
+  display: inline-flex; align-items: center; gap: 7px;
+  font-size: 12px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase;
+  color: var(--accent);
+}
+.livedot i {
+  width: 8px; height: 8px; border-radius: 50%; background: var(--accent);
+  box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent) 70%, transparent);
+  animation: pulse 2.4s ease-out infinite;
+}
+@keyframes pulse {
+  70% { box-shadow: 0 0 0 9px transparent; }
+  100% { box-shadow: 0 0 0 0 transparent; }
+}
+@media (prefers-reduced-motion: reduce) { .livedot i { animation: none; } }
+
+/* ------------------------------------------------------------------ type */
+h1 { font-size: 26px; line-height: 1.2; margin: 24px 0 6px; letter-spacing: -.02em; }
+h2 { font-size: 19px; margin: 28px 0 10px; letter-spacing: -.01em; }
+h3 { font-size: 15px; margin: 20px 0 8px; color: var(--muted); font-weight: 600; }
+p { margin: 0 0 12px; color: var(--muted); }
+.lead { color: var(--ink); font-size: 17px; }
+a { color: var(--accent); }
+.meta { font-size: 13px; color: var(--faint); }
+
+/* --------------------------------------------------------------- surface */
+.card {
+  background: var(--surface); border: 1px solid var(--line);
+  border-radius: var(--radius); padding: 16px;
+}
+.card + .card { margin-top: 12px; }
+
+.notice {
+  border-left: 3px solid var(--accent); background: var(--accent-soft);
+  padding: 12px 14px; border-radius: 0 8px 8px 0; margin: 0 0 16px; color: var(--ink);
+}
+.notice.bad { border-color: var(--danger); background: var(--danger-soft); }
+.notice.warn { border-color: var(--warn); background: color-mix(in srgb, var(--warn) 14%, var(--bg)); }
+.notice p:last-child { margin-bottom: 0; }
+
+/* --------------------------------------------------------------- control */
+input[type="text"], input[type="password"], input[type="search"],
+input[type="number"], input[type="datetime-local"], textarea, select {
+  width: 100%; min-height: var(--tap);
+  background: var(--surface-2); color: var(--ink);
+  border: 1px solid var(--line-strong); border-radius: 8px;
+  padding: 10px 12px; font: inherit;
+}
+textarea { min-height: 120px; resize: vertical; line-height: 1.5; }
+input:focus-visible, textarea:focus-visible, select:focus-visible,
+button:focus-visible, a:focus-visible, label:focus-within {
+  outline: 2px solid var(--accent); outline-offset: 2px;
+}
+label.field { display: block; margin-bottom: 14px; }
+label.field > span { display: block; font-size: 13px; color: var(--muted); margin-bottom: 6px; }
+
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  min-height: var(--tap); padding: 0 18px;
+  background: var(--accent); color: var(--accent-ink);
+  border: 0; border-radius: 8px;
+  font: inherit; font-weight: 700; cursor: pointer;
+  text-decoration: none;
+}
+.btn:disabled { opacity: .45; cursor: not-allowed; }
+.btn.ghost { background: transparent; color: var(--ink); border: 1px solid var(--line-strong); font-weight: 600; }
+.btn.danger { background: transparent; color: var(--danger); border: 1px solid var(--danger); font-weight: 600; }
+.btn.wide { width: 100%; }
+.btn.sm { min-height: 36px; padding: 0 12px; font-size: 13px; }
+
+/* ------------------------------------------------------------ song list */
+.searchbar { position: sticky; top: 56px; z-index: 10; background: var(--bg); padding: 12px 0 8px; }
+
+.songs { list-style: none; margin: 0 0 140px; padding: 0; }
+.songs li { border-bottom: 1px solid var(--line); }
+
+/* The whole row is the target. Thumbs are not precise in the dark. */
+.song {
+  display: flex; align-items: center; gap: 14px;
+  min-height: 60px; padding: 10px 4px; cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.song input { position: absolute; opacity: 0; pointer-events: none; }
+.song .box {
+  flex: none; width: 26px; height: 26px; border-radius: 7px;
+  border: 2px solid var(--line-strong); background: var(--surface-2);
+  display: grid; place-items: center; transition: background .12s, border-color .12s;
+}
+.song .box::after {
+  content: ""; width: 11px; height: 6px; margin-top: -3px;
+  border-left: 2.5px solid var(--accent-ink); border-bottom: 2.5px solid var(--accent-ink);
+  transform: rotate(-45deg) scale(0); transition: transform .12s ease-out;
+}
+.song input:checked + .box { background: var(--accent); border-color: var(--accent); }
+.song input:checked + .box::after { transform: rotate(-45deg) scale(1); }
+.song .title { font-weight: 600; line-height: 1.3; }
+.song .artist { font-size: 13.5px; color: var(--faint); margin-top: 2px; }
+
+/* At the limit, the remaining songs dim -- they never disappear. The legacy
+ * page stopped rendering them entirely, so half the repertoire vanished the
+ * moment you picked your fifth song (F4). */
+.song.locked { opacity: .38; cursor: not-allowed; }
+.song.locked .box { border-style: dashed; }
+
+@media (prefers-reduced-motion: reduce) {
+  .song .box, .song .box::after { transition: none; }
+}
+
+/* --------------------------------------------------------------- tallybar */
+.tallybar {
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 30;
+  background: color-mix(in srgb, var(--surface) 96%, transparent);
+  backdrop-filter: blur(10px);
+  border-top: 1px solid var(--line-strong);
+  padding: 12px 16px calc(12px + env(safe-area-inset-bottom));
+}
+.tallybar .inner {
+  max-width: 720px; margin: 0 auto; display: flex; align-items: center; gap: 14px;
+}
+.tallybar .count { font-size: 15px; font-weight: 700; white-space: nowrap; }
+.tallybar .count small { display: block; font-size: 12px; font-weight: 500; color: var(--faint); }
+.tallybar .btn { flex: 1; }
+
+.progress { height: 3px; background: var(--line); border-radius: 2px; overflow: hidden; margin-bottom: 10px; }
+.progress i { display: block; height: 100%; background: var(--accent); width: 0; transition: width .18s ease-out; }
+@media (prefers-reduced-motion: reduce) { .progress i { transition: none; } }
+
+/* ---------------------------------------------------------------- results */
+.rank { list-style: none; margin: 0; padding: 0; }
+.rank li { display: flex; align-items: center; gap: 14px; padding: 12px 0; border-bottom: 1px solid var(--line); }
+.rank .pos {
+  flex: none; width: 32px; height: 32px; border-radius: 8px;
+  display: grid; place-items: center; font-weight: 700; font-size: 14px;
+  background: var(--surface-2); color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+.rank li.top .pos { background: var(--accent); color: var(--accent-ink); }
+.rank .who { flex: 1; min-width: 0; }
+.rank .who b { display: block; font-weight: 600; }
+.rank .who span { font-size: 13px; color: var(--faint); }
+.rank .n { font-weight: 700; font-variant-numeric: tabular-nums; }
+.rank .n small { color: var(--faint); font-weight: 500; font-size: 12px; }
+
+/* ------------------------------------------------------------------ chips */
+.chip {
+  display: inline-block; font-size: 11px; font-weight: 700;
+  letter-spacing: .06em; text-transform: uppercase;
+  padding: 3px 8px; border-radius: 5px; background: var(--surface-2); color: var(--muted);
+}
+.chip.live, .chip.open { background: var(--accent-soft); color: var(--accent); }
+.chip.closed { background: var(--surface-2); color: var(--faint); }
+.chip.draft { background: var(--surface-2); color: var(--warn); }
+.chip.played { background: var(--accent-soft); color: var(--accent); }
+.chip.excluded { background: var(--danger-soft); color: var(--danger); }
+
+.row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.row.between { justify-content: space-between; }
+.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+@media (max-width: 520px) { .grid2 { grid-template-columns: 1fr; } }
+
+.stack { display: flex; flex-direction: column; gap: 10px; }
+.hide { display: none !important; }
+
+/* ------------------------------------------------------------------ admin */
+.adminbar { background: var(--surface); border-bottom: 1px solid var(--line); }
+.adminbar .wrap { display: flex; align-items: center; gap: 18px; min-height: 52px; flex-wrap: wrap; }
+.adminbar a { color: var(--muted); text-decoration: none; font-size: 14px; font-weight: 600; padding: 6px 0; }
+.adminbar a.on, .adminbar a:hover { color: var(--accent); }
+.wrap.wide { max-width: 1000px; }
+
+table { width: 100%; border-collapse: collapse; font-size: 14.5px; }
+th { text-align: left; font-size: 11px; letter-spacing: .07em; text-transform: uppercase;
+     color: var(--faint); padding: 10px 12px; border-bottom: 1px solid var(--line-strong); white-space: nowrap; }
+td { padding: 10px 12px; border-bottom: 1px solid var(--line); vertical-align: middle; }
+tr:last-child td { border-bottom: 0; }
+td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
+.tablewrap { overflow-x: auto; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); }
+
+.stat { display: flex; gap: 22px; flex-wrap: wrap; }
+.stat div b { display: block; font-size: 24px; font-variant-numeric: tabular-nums; line-height: 1.1; }
+.stat div span { font-size: 12px; color: var(--faint); }
+
+.logline { font-size: 13px; color: var(--muted); padding: 7px 0; border-bottom: 1px solid var(--line); }
+.logline time { color: var(--faint); font-variant-numeric: tabular-nums; }
+.logline b { color: var(--ink); font-weight: 600; }
+
+footer.foot { margin: 48px 0 32px; padding-top: 18px; border-top: 1px solid var(--line);
+              font-size: 12.5px; color: var(--faint); }
+
+/* The band display is read from two metres away in stage lighting. */
+body.band { font-size: 18px; }
+body.band .rank li { padding: 16px 0; }
+body.band .rank .who b { font-size: 21px; }
+body.band .rank .pos { width: 40px; height: 40px; font-size: 17px; }
+body.band h1 { font-size: 32px; }

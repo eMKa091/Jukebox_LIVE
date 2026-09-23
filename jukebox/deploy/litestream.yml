@@ -1,0 +1,17 @@
+# Continuous replication of the SQLite database to object storage.
+#
+# Cloudflare R2 has no egress charge and a free tier far larger than this
+# database will ever be; any S3-compatible bucket works. Point
+# LITESTREAM_REPLICA_URL at it and this file is not needed -- it is here for
+# the case where you want more than one replica.
+dbs:
+  - path: /data/jukebox.db
+    replicas:
+      - url: ${LITESTREAM_REPLICA_URL}
+        # How far behind the replica may fall. Ten seconds is the worst case
+        # for how many votes a total machine loss could cost.
+        sync-interval: 10s
+        # Keep a full day of restore points, so "restore to just before we
+        # deleted that event" is possible.
+        retention: 72h
+        snapshot-interval: 6h

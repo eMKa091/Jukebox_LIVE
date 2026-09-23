@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block title %}Děkujeme — {{ event.name }}{% endblock %}
+{% block topbar_extra %}<span class="livedot"><i></i> Kolo {{ round.ordinal }}</span>{% endblock %}
+{% block content %}
+
+<div data-stream="/e/{{ event.slug }}/stream" hidden></div>
+
+<h1>Díky, {{ voter_name }}!</h1>
+<p class="lead">Tvé hlasy jsme započítali. Tohle jsi vybral/a:</p>
+
+<div class="card">
+  <ul class="songs" style="margin:0">
+    {% for title in songs %}
+    <li><div class="song" style="cursor:default;min-height:44px">
+      <span class="box" style="background:var(--accent);border-color:var(--accent)"></span>
+      <span class="title">{{ title }}</span>
+    </div></li>
+    {% endfor %}
+  </ul>
+</div>
+
+<p class="meta" style="margin-top:16px">
+  Až kapela otevře další kolo, tahle stránka se sama obnoví — nemusíš nic dělat.
+</p>
+
+{% endblock %}

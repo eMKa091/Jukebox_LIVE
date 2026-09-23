@@ -1,0 +1,48 @@
+# Fly.io deployment.
+#
+#   fly launch --no-deploy
+#   fly volumes create jukebox_data --size 1 --region waw
+#   fly secrets set JUKEBOX_SECRET_KEY=$(python -c 'import secrets;print(secrets.token_urlsafe(32))')
+#   fly secrets set LITESTREAM_REPLICA_URL=s3://<bucket>/jukebox \
+#                   LITESTREAM_ACCESS_KEY_ID=... LITESTREAM_SECRET_ACCESS_KEY=...
+#   fly deploy
+
+app = "jukebox-live"
+primary_region = "waw"        # Warsaw: ~250 km from Ostrava
+
+[build]
+
+[env]
+  JUKEBOX_DB = "/data/jukebox.db"
+
+[mounts]
+  source = "jukebox_data"
+  destination = "/data"
+
+[http_service]
+  internal_port = 8080
+  force_https = true
+
+  # Do NOT scale to zero. A cold start is fine on a Tuesday and unacceptable
+  # when the singer has just told two hundred people to open the link. The
+  # saving is about $2/month.
+  auto_stop_machines = false
+  auto_start_machines = true
+  min_machines_running = 1
+
+  # SSE connections are long-lived by design; they are not stalled requests.
+  [http_service.concurrency]
+    type = "connections"
+    hard_limit = 600
+    soft_limit = 400
+
+[[http_service.checks]]
+  interval = "20s"
+  timeout = "4s"
+  grace_period = "10s"
+  method = "GET"
+  path = "/readyz"
+
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "512mb"

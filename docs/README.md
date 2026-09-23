@@ -29,8 +29,24 @@ has two structural problems that a rewrite has to fix rather than patch:
 Everything else in [03-findings.md](03-findings.md) is downstream of those two,
 or is ordinary bit-rot.
 
-**Recommendation:** rebuild as a single FastAPI container with HTMX and
-Server-Sent Events over PostgreSQL, on Fly.io in Warsaw, for about $5/month.
-AWS and Azure cost four to eight times that for a workload of 30,000 rows a
-year. See [05-hosting.md](05-hosting.md) for the numbers and
-[04-target-architecture.md](04-target-architecture.md) for the reasoning.
+**Recommendation:** rebuild as a single FastAPI container with Server-Sent
+Events over SQLite, replicated continuously by Litestream, on Fly.io in Warsaw
+for about $3/month. AWS and Azure cost eight to twelve times that for a
+workload of 30,000 rows a year. See [05-hosting.md](05-hosting.md) for the
+numbers and [04-target-architecture.md](04-target-architecture.md) for the
+reasoning — including the amendment at the end, where the original PostgreSQL
+recommendation was reversed.
+
+## Status — 2026-09-23
+
+The rebuild is written and tested: [`../jukebox/`](../jukebox/).
+
+- 94 tests pass against a real database, including 60 concurrent voters and
+  two threads racing to open the same round.
+- Gate G2 passes against the real production blob: 8 events, 112 songs, 45
+  votes, 9 voters, per-song tallies identical to the legacy results screen.
+- Every finding in [03-findings.md](03-findings.md) that was a defect in the
+  application has a regression test named after it.
+
+Remaining: deploy, restore drill, load test, dress rehearsal, cutover —
+phases 7 to 10 of [06-migration-plan.md](06-migration-plan.md).

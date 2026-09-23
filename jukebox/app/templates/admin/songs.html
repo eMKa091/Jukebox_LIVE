@@ -1,0 +1,77 @@
+{% extends "admin/base.html" %}
+{% block title %}Songs — Jukebox LIVE{% endblock %}
+{% block content %}
+
+<h1>Master song list</h1>
+<p class="meta">{{ active|length }} active{% if retired %}, {{ retired|length }} retired{% endif %}</p>
+
+<div class="card">
+  <h3 style="margin-top:0">Import a CSV</h3>
+  <form method="post" action="/admin/songs/import" enctype="multipart/form-data">
+    <label class="field">
+      <span>File — needs a title column and an artist column. Comma or semicolon,
+            UTF-8 or Windows-1250, Czech or English headers all work.</span>
+      <input type="file" name="file" accept=".csv,text/csv" required>
+    </label>
+    <button class="btn" type="submit">Import</button>
+    <p class="meta" style="margin:10px 0 0">Importing never deletes. Songs already
+       in the list are left alone; retired ones come back.</p>
+  </form>
+</div>
+
+<div class="card">
+  <h3 style="margin-top:0">Add one song</h3>
+  <form method="post" action="/admin/songs" class="row">
+    <input type="text" name="title" placeholder="Title" required style="flex:1;min-width:160px">
+    <input type="text" name="artist" placeholder="Artist" required style="flex:1;min-width:160px">
+    <button class="btn" type="submit">Add</button>
+  </form>
+</div>
+
+<div class="row between" style="margin:24px 0 8px">
+  <h2 style="margin:0">Songs</h2>
+  <a class="btn ghost sm" href="/admin/songs/export.csv">Export CSV</a>
+</div>
+
+<div class="tablewrap">
+  <table>
+    <thead><tr><th>Title</th><th>Artist</th><th></th></tr></thead>
+    <tbody>
+      {% for song in active %}
+      <tr>
+        <td><b>{{ song.title }}</b></td>
+        <td>{{ song.artist }}</td>
+        <td style="text-align:right">
+          <form method="post" action="/admin/songs/{{ song.id }}/retire" style="margin:0">
+            <button class="btn ghost sm" type="submit">Retire</button>
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+{% if retired %}
+<h2>Retired</h2>
+<p class="meta">Hidden from new events. Past votes still resolve to these titles —
+   nothing is ever deleted.</p>
+<div class="tablewrap">
+  <table>
+    <tbody>
+      {% for song in retired %}
+      <tr>
+        <td><b>{{ song.title }}</b></td><td>{{ song.artist }}</td>
+        <td style="text-align:right">
+          <form method="post" action="/admin/songs/{{ song.id }}/restore" style="margin:0">
+            <button class="btn ghost sm" type="submit">Restore</button>
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endif %}
+
+{% endblock %}

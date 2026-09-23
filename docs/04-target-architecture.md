@@ -244,3 +244,38 @@ Named here so they do not creep in:
 - Any analytics beyond per-event CSV export.
 - Mobile apps.
 - Migrating `webpage_source/` (the v1 prototype). It gets deleted.
+
+---
+
+## Amendment — 2026-09-23: SQLite, not PostgreSQL
+
+Reversed after building it, with the operator's agreement.
+
+The workload is one writer, ~30,000 rows a year, and a hard correctness
+requirement during a twenty-minute burst. SQLite in WAL mode on a persistent
+volume, with Litestream streaming the write-ahead log to object storage
+continuously, meets that with one service instead of two, no database bill, and
+a *tighter* recovery point than the nightly `pg_dump` this document originally
+proposed — seconds rather than hours.
+
+The reasoning that put Postgres here was wrong in a specific way worth naming:
+F1 was read as an argument against SQLite. It is not. F1 was caused by an
+ephemeral disk plus a backup button a human had to remember to press. Neither
+is a property of SQLite, and swapping the engine would have fixed neither.
+
+What was actually given up: horizontal scaling this app will never use, and
+`LISTEN`/`NOTIFY` fan-out across processes, which matters only above one
+process. The SSE hub is an in-process asyncio fan-out instead
+(`app/web/hub.py`); its interface would take a real bus behind it without
+anything above it changing.
+
+The invariants this document argued for all survived the move — SQLite supports
+partial unique indexes, so `one_live_event` and `one_open_round` are enforced
+by the database exactly as designed.
+
+**Also changed:** the UI uses ~160 lines of plain JavaScript rather than HTMX.
+The page needs a fetch-and-swap and a checkbox limiter; a library plus a CDN
+dependency to avoid writing those was not a good trade.
+
+The built system is in [`../jukebox/`](../jukebox/), and
+[`../jukebox/README.md`](../jukebox/README.md) documents it as it actually is.

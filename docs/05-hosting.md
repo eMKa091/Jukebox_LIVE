@@ -22,7 +22,7 @@ on a Saturday, and that the votes must still exist on Sunday.
 
 | Option | App | Database | Total / month | Ops burden |
 |---|---|---|---|---|
-| **Fly.io** *(recommended)* | ~$2–3 (shared-cpu-1x, 512 MB, Warsaw) | ~$2 (Fly PG, 256 MB + 1 GB volume) **or** $0 (Neon free) | **≈ $3–6** | Low |
+| **Fly.io** *(recommended)* | ~$3 (shared-cpu-1x, 512 MB, Warsaw) | $0 — SQLite on a 1 GB volume (~$0.15) + Litestream to R2 (free tier) | **≈ $3** | Low |
 | Hetzner CX22 | €3.79 (2 vCPU, 4 GB, Falkenstein) — app + PG + Caddy on one box | included | **≈ €4** | You patch it |
 | Cloudflare Workers + D1 | $5 Workers Paid (needed for Durable Objects) | D1 free tier | **≈ $0–5** | Very low |
 | Railway | ~$5 Hobby, usage-based | included | **≈ $5–10** | Very low |
@@ -36,10 +36,14 @@ Plus a domain, ~€10–15/year, on any option.
 
 ```
   fly.toml
-  ├── app       jukebox-live       shared-cpu-1x, 512 MB, min_machines_running = 1
-  ├── postgres  jukebox-live-db    shared-cpu-1x, 256 MB, 1 GB volume
-  └── region    waw (Warsaw)       ~250 km from Ostrava
+  ├── app      jukebox-live    shared-cpu-1x, 512 MB, min_machines_running = 1
+  ├── volume   jukebox_data    1 GB, holds jukebox.db
+  ├── sidecar  litestream      streams the WAL to Cloudflare R2, continuously
+  └── region   waw (Warsaw)    ~250 km from Ostrava
 ```
+
+*(Amended 2026-09-23: SQLite replaced PostgreSQL. See
+[04-target-architecture.md](04-target-architecture.md), amendment at the end.)*
 
 Why this one:
 
@@ -95,10 +99,14 @@ make vote loss structurally impossible, not merely unlikely.
 
 | Layer | Mechanism | Retention |
 |---|---|---|
-| Continuous | Postgres WAL / provider snapshots | 7 days |
-| Nightly | `pg_dump` → object storage (Cloudflare R2 free tier, or B2) | 90 days |
-| **Per event** | **Automatic `pg_dump` + per-event CSV on `event.closed`** | forever |
+| **Continuous** | **Litestream ships the SQLite WAL to R2 every 10 s** | 72 h of restore points |
+| Daily | Litestream snapshot | 72 h |
+| Per event | CSV export on `event.closed`, plus `app.cli backup` | forever |
 | Quarterly | A restore that is actually performed | — |
+
+The continuous layer is the one that matters. The worst case for a total
+machine loss is ten seconds of votes, with nobody having had to press
+anything — which is the direct, structural answer to F1.
 
 The per-event hook is the direct replacement for the "Backup now" button. It
 fires on a state transition, not on someone remembering. The CSV lands somewhere
@@ -130,9 +138,9 @@ BACKUP_S3_*            object-storage credentials
 ```
 
 `GITHUB_TOKEN` disappears entirely — nothing writes to a repository at runtime
-any more. **Revoke the existing one the day the Streamlit app is retired**, and
-confirm first whether it points at `az-fkaw/Jukebox_LIVE` or
-`eMKa091/Jukebox_LIVE` ([F2](03-findings.md)).
+any more. **Revoke it the day the Streamlit app is retired.** It is the token
+with write access to `eMKa091/Jukebox_LIVE` — confirmed 2026-09-23, despite
+`gh_utils.py:7` naming `az-fkaw` ([F2](03-findings.md)).
 
 ## 7. GDPR
 

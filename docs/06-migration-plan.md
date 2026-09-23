@@ -8,9 +8,15 @@ knows the domain.
 rest is migration, rehearsal and cutover, and skipping them is how a live show
 breaks.
 
+> **Status, 2026-09-23.** Phases 1–6 are built and their gates pass:
+> [`../jukebox/`](../jukebox/), 94 tests, gate G2 verified against the real
+> production database. Phase 0 was skipped — gigs are scheduled, but the
+> operator chose a rebuild over patching the old app. **Phases 7–10 remain:
+> deploy, restore drill, load test, dress rehearsal, cutover.**
+
 ---
 
-## Phase 0 — Stop the bleeding *(1 hour — only if a gig happens before cutover)*
+## Phase 0 — Stop the bleeding ⊘ *skipped by decision, 2026-09-23*
 
 Do not refactor. Two changes to the running Streamlit app:
 
@@ -30,7 +36,7 @@ invest anywhere else in this codebase.
 
 ---
 
-## Phase 1 — Freeze and document *(done)*
+## Phase 1 — Freeze and document ✅ *done*
 
 This branch. `docs/01`–`06`. No further behavioural change to `jukeboxHeroes-v2/`.
 
@@ -39,7 +45,7 @@ got wrong gets corrected here before anything is built on top of it.
 
 ---
 
-## Phase 2 — Schema and data migration *(1.5 days)*
+## Phase 2 — Schema and data migration ✅ *done*
 
 Alembic migration producing the schema in [02-data-model.md](02-data-model.md),
 plus `scripts/migrate_sqlite.py` that reads the real
@@ -65,7 +71,7 @@ Mapping decisions that need a call from you:
 
 ---
 
-## Phase 3 — Domain core *(2.5 days)*
+## Phase 3 — Domain core ✅ *done*
 
 `app/domain/` — event and round transitions, ballot submission, tallying. No
 HTTP, no templates. Tests first; this is where the product's rules live and it
@@ -83,7 +89,7 @@ is the part the current codebase cannot test at all.
 
 ---
 
-## Phase 4 — Attendee experience *(2 days)*
+## Phase 4 — Attendee experience ✅ *done*
 
 Ballot page, splash, SSE stream, device cookie, QR entry at `/e/{slug}`.
 
@@ -100,7 +106,7 @@ Ballot page, splash, SSE stream, device cookie, QR entry at `/e/{slug}`.
 
 ---
 
-## Phase 5 — Admin console *(2.5 days)*
+## Phase 5 — Admin console ✅ *done*
 
 Login, events, rounds, song assignment, live results, CSV export, QR generation,
 band-link management.
@@ -126,7 +132,7 @@ Also: argon2id password, rate-limited login, session expiry ([F8](03-findings.md
 
 ---
 
-## Phase 6 — Band display *(0.5 day)*
+## Phase 6 — Band display ✅ *done*
 
 `/band/{signed-token}` — live ranking, what has been played, what is next.
 Auto-updating, designed to be readable at arm's length on a tablet in stage
@@ -179,8 +185,8 @@ the following morning.
 ## Phase 10 — Decommission *(0.5 day)*
 
 - Take down the Streamlit deployment.
-- **Revoke `GITHUB_TOKEN`** ([F2](03-findings.md)) — after confirming which
-  repository it actually targets.
+- **Revoke `GITHUB_TOKEN`** ([F2](03-findings.md)) — the one with write access
+  to `eMKa091/Jukebox_LIVE`.
 - Move `jukeboxHeroes-v2/` and `webpage_source/` under `legacy/`, or tag the
   final commit `streamlit-final` and delete them. Tag, then delete — the history
   is the archive.

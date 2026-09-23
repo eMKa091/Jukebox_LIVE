@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block title %}{{ event.name }} — kapela{% endblock %}
+{% block bodyclass %}band{% endblock %}
+{% block topbar_extra %}
+  {% if round and round.state == 'open' %}<span class="livedot"><i></i> Kolo {{ round.ordinal }} běží</span>{% endif %}
+{% endblock %}
+{% block content %}
+
+<div data-stream="/band/{{ token }}/stream" hidden></div>
+
+<h1>{{ event.name }}</h1>
+<p class="meta">{{ event.venue }}{% if event.venue %} · {% endif %}{{ stats.voters }} hlasujících · {{ stats.votes }} hlasů</p>
+
+<div data-refresh="/band/{{ token }}/live">
+  {% include "_band_live.html" %}
+</div>
+
+{% endblock %}

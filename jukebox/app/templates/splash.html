@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% block title %}Jukebox LIVE{% endblock %}
+{% block content %}
+
+<h1>Vážení hosté,</h1>
+<p class="lead">{{ message }}</p>
+
+<div class="card">
+  <h3 style="margin-top:0">Kdo jsme?</h3>
+  <p>Top party band hrající přes 100 světových hitů, převážně z let 2000+,
+     ale také pecky ze 60.–90. let.</p>
+  <p>Čtyři skvělé zpěvačky a zpěváci z POP ACADEMY OSTRAVA, které doplňuje profi kapela.</p>
+  <p>Díky naší aplikaci máte jedinečnou možnost vybrat písně, které bude kapela na koncertě hrát!</p>
+</div>
+
+<div class="card">
+  <h3 style="margin-top:0">Ozvěte se nám</h3>
+  <p><a href="tel:+420608462008">+420 608 462 008</a></p>
+  <p><a href="mailto:rudyhorvat77@gmail.com">rudyhorvat77@gmail.com</a></p>
+</div>
+
+{% if repertoire %}
+<h2>Náš repertoár</h2>
+<p class="meta">{{ repertoire|length }} písní</p>
+<ul class="songs" style="margin-bottom:24px">
+  {% for song in repertoire %}
+  <li><div class="song" style="cursor:default">
+    <div><div class="title">{{ song.title }}</div><div class="artist">{{ song.artist }}</div></div>
+  </div></li>
+  {% endfor %}
+</ul>
+{% endif %}
+
+{% endblock %}
