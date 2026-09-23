@@ -33,13 +33,18 @@ import time as _time
 ASSET_VERSION = str(int(_time.time()))
 
 
-def take_flashes(request: Request) -> list[tuple[str, str]]:
+def take_flashes(request: Request) -> list[dict]:
     raw = request.cookies.get(FLASH_COOKIE)
     if not raw:
         return []
     try:
-        return [(kind, text) for kind, text in json.loads(unquote(raw))]
-    except (ValueError, TypeError):
+        return [
+            {"kind": f[0], "message": f[1],
+             "href": f[2] if len(f) > 2 else None,
+             "label": f[3] if len(f) > 3 else None}
+            for f in json.loads(unquote(raw))
+        ]
+    except (ValueError, TypeError, IndexError):
         return []
 
 
@@ -69,15 +74,32 @@ def fragment(template: str, **context: Any) -> HTMLResponse:
     )
 
 
-def redirect(url: str, *, flash: tuple[str, str] | None = None, status_code: int = 303) -> RedirectResponse:
-    """POST-redirect-GET, optionally carrying one message across."""
+def redirect(
+    url: str,
+    *,
+    flash: tuple | None = None,
+    status_code: int = 303,
+) -> RedirectResponse:
+    """POST-redirect-GET, optionally carrying one message across.
+
+    `flash` is (kind, message) or (kind, message, href, label). The link is for
+    the case where the message names somewhere the operator now has to go --
+    telling someone mid-gig that a song is not on the ballot is only half an
+    answer if they then have to find the page themselves.
+    """
     response = RedirectResponse(url, status_code=status_code)
     if flash is not None:
         set_flash(response, *flash)
     return response
 
 
-def set_flash(response: Response, kind: str, message: str) -> None:
+def set_flash(
+    response: Response,
+    kind: str,
+    message: str,
+    href: str | None = None,
+    label: str | None = None,
+) -> None:
     # Percent-encoded, because cookie values travel in a Set-Cookie header and
     # headers are latin-1. Every attendee-facing message here is Czech, so
     # "Vyber prosím alespoň jednu píseň" would otherwise raise
@@ -85,7 +107,7 @@ def set_flash(response: Response, kind: str, message: str) -> None:
     # already having a bad time.
     response.set_cookie(
         FLASH_COOKIE,
-        quote(json.dumps([[kind, message]], ensure_ascii=False)),
+        quote(json.dumps([[kind, message, href, label]], ensure_ascii=False)),
         max_age=30,
         httponly=True,
         samesite="lax",

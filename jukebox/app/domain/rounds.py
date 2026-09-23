@@ -211,6 +211,72 @@ def assign_all_songs(db: Database, *, round_id: int, actor: str) -> int:
         return cur.rowcount
 
 
+def songs_not_in_round(conn: sqlite3.Connection, round_id: int) -> list[sqlite3.Row]:
+    """Master songs this round does not offer at all.
+
+    A round owns its own list, which is what makes per-round exclusion and
+    "played" work. The cost is that a song added to the master list after the
+    round was built belongs to no round, so it cannot be voted on and nothing
+    says why. This query is the gap, and the admin console shows it.
+    """
+    return conn.execute(
+        "SELECT s.id, s.title, s.artist FROM songs s"
+        " WHERE s.retired_at IS NULL"
+        "   AND s.id NOT IN (SELECT song_id FROM round_songs WHERE round_id = ?)"
+        " ORDER BY s.artist COLLATE NOCASE, s.title COLLATE NOCASE",
+        (round_id,),
+    ).fetchall()
+
+
+def add_songs(db: Database, *, round_id: int, song_ids: list[int], actor: str) -> int:
+    """Put specific master songs into a round. Returns how many were new.
+
+    Deliberately allowed while the round is open: a guest asks for a song
+    mid-gig, and the band should be able to offer it without closing voting.
+    Ballots already open are told to refresh, and a half-made selection
+    survives that refresh because the client keeps it in sessionStorage.
+
+    Retired songs are refused rather than silently skipped -- being asked to
+    add something that cannot be added should say so.
+    """
+    if not song_ids:
+        return 0
+    with db.write() as conn:
+        rnd = get(conn, round_id)
+        placeholders = ",".join("?" * len(song_ids))
+
+        found = conn.execute(
+            f"SELECT id, retired_at FROM songs WHERE id IN ({placeholders})", song_ids
+        ).fetchall()
+        if len(found) != len(set(song_ids)):
+            raise NotFound("Some of those songs no longer exist.")
+        if any(r["retired_at"] for r in found):
+            raise Invalid("Retired songs cannot be added to a round. Restore them first.")
+
+        before = conn.execute(
+            f"SELECT COUNT(*) AS n FROM round_songs"
+            f" WHERE round_id = ? AND song_id IN ({placeholders})",
+            (round_id, *song_ids),
+        ).fetchone()["n"]
+
+        conn.executemany(
+            "INSERT INTO round_songs (round_id, song_id) VALUES (?, ?)"
+            " ON CONFLICT (round_id, song_id) DO NOTHING",
+            [(round_id, song_id) for song_id in song_ids],
+        )
+        added = len(set(song_ids)) - before
+        log.record(
+            conn,
+            actor=actor,
+            action="round.songs_added",
+            event_id=rnd.event_id,
+            ordinal=rnd.ordinal,
+            added=added,
+            while_open=rnd.state == "open",
+        )
+        return added
+
+
 def set_excluded(db: Database, *, round_id: int, song_ids: list[int], excluded: bool, actor: str) -> int:
     """Take songs out of a round, or put them back.
 

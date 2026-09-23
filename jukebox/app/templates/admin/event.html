@@ -44,7 +44,9 @@
   <nav class="tabs" aria-label="Sections">
     {% for key, label in tabs %}
     <a class="{{ 'on' if key == tab }}"
-       href="/admin/events/{{ event.id }}?tab={{ key }}&amp;round={{ selected.id }}">{{ label }}</a>
+       href="/admin/events/{{ event.id }}?tab={{ key }}&amp;round={{ selected.id }}">{{ label }}{#
+       #}{% if key == 'songs' and missing_count %}<span class="badge"
+          title="{{ missing_count }} song(s) not in this round">{{ missing_count }}</span>{% endif %}</a>
     {% endfor %}
   </nav>
 </div>

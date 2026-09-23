@@ -9,3 +9,9 @@ __pycache__/
 # venv; that is machine state, not project state.
 .vscode/
 .idea/
+
+# Runtime databases and their SQLite sidecars, wherever they land.
+data/
+*.db
+*.db-wal
+*.db-shm

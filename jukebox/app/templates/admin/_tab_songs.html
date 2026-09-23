@@ -7,6 +7,20 @@
   song does not come back in the next round.
 </p>
 
+{% if missing_count and active_filter != 'missing' %}
+{# A song added to the master list after this round was built belongs to no
+   round, so it cannot be voted on. Say so where the admin is already looking,
+   rather than leaving them to wonder why it never appeared. #}
+<div class="notice warn">
+  <p>
+    {{ missing_count }} song{{ '' if missing_count == 1 else 's' }} in the master
+    list {{ 'is' if missing_count == 1 else 'are' }} not in this round, so
+    {{ 'it is' if missing_count == 1 else 'they are' }} not on the ballot.
+    <a href="/admin/events/{{ event.id }}?tab=songs&amp;round={{ selected.id }}&amp;filter=missing">Review them →</a>
+  </p>
+</div>
+{% endif %}
+
 <form method="get" action="/admin/events/{{ event.id }}" class="toolbar">
   <input type="hidden" name="tab" value="songs">
   <input type="hidden" name="round" value="{{ selected.id }}">
@@ -46,7 +60,9 @@
         </tr>
         {% else %}
         <tr><td colspan="4" class="meta" style="padding:22px;text-align:center">
-          {% if query %}Nothing matches “{{ query }}”.{% else %}Nothing here.{% endif %}
+          {% if query %}Nothing matches “{{ query }}”.
+          {% elif active_filter == 'missing' %}Every song in the master list is already in this round.
+          {% else %}Nothing here.{% endif %}
         </td></tr>
         {% endfor %}
       </tbody>
@@ -55,13 +71,30 @@
 
   {# Sticky, so the actions stay reachable however long the list is. #}
   <div class="bulkbar">
-    <span class="hint">Tick songs, then choose:</span>
-    <button class="btn ghost sm" type="submit" name="action" value="exclude">Exclude</button>
-    <button class="btn ghost sm" type="submit" name="action" value="include">Put back</button>
-    <button class="btn sm" type="submit" name="action" value="played">Mark played</button>
-    <button class="btn ghost sm" type="submit" name="action" value="unplayed">Un-mark</button>
+    {% if active_filter == 'missing' %}
+      <span class="hint">
+        Tick what this round should offer{% if selected.state == 'open' %} —
+        adding now refreshes every open ballot{% endif %}:
+      </span>
+      <button class="btn sm" type="submit" name="action" value="add">Add to round</button>
+      <button class="btn ghost sm" type="submit" name="action" value="add_all">Add all {{ counts.missing }}</button>
+    {% else %}
+      <span class="hint">Tick songs, then choose:</span>
+      <button class="btn ghost sm" type="submit" name="action" value="exclude">Exclude</button>
+      <button class="btn ghost sm" type="submit" name="action" value="include">Put back</button>
+      <button class="btn sm" type="submit" name="action" value="played">Mark played</button>
+      <button class="btn ghost sm" type="submit" name="action" value="unplayed">Un-mark</button>
+    {% endif %}
   </div>
 </form>
+
+{% if active_filter == 'missing' %}
+<p class="meta">
+  These are in the master list but not in round {{ selected.ordinal }}. Rounds
+  keep their own list — that is what lets you exclude a song from one round and
+  offer it in the next — so a song added later has to be put in deliberately.
+</p>
+{% endif %}
 
 {% if next_round %}
 <h2>After this round</h2>

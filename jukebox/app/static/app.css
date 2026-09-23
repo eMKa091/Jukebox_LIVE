@@ -360,3 +360,13 @@ body.band h1 { font-size: 32px; }
 
 .empty { padding: 26px 18px; border: 1px dashed var(--line-strong); border-radius: var(--radius);
          color: var(--faint); font-size: 14px; text-align: center; }
+
+/* A count on a tab: something in there needs attention. Used for songs that
+ * are in the master list but not in the selected round, which is otherwise
+ * invisible until someone wonders why a song never appeared on the ballot. */
+.badge {
+  display: inline-block; margin-left: 6px; padding: 1px 7px;
+  border-radius: 9px; font-size: 11px; font-weight: 700;
+  background: var(--warn); color: var(--accent-ink);
+  font-variant-numeric: tabular-nums; vertical-align: 1px;
+}

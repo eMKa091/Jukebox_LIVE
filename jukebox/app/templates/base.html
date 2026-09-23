@@ -22,8 +22,11 @@
 {% endblock %}
 
 <main class="wrap{% block wrapclass %}{% endblock %}">
-  {% for kind, message in flashes %}
-    <div class="notice {{ kind }}"><p>{{ message }}</p></div>
+  {% for flash in flashes %}
+    <div class="notice {{ flash.kind }}">
+      <p>{{ flash.message }}{% if flash.href %}
+        <a href="{{ flash.href }}">{{ flash.label or 'Open' }} →</a>{% endif %}</p>
+    </div>
   {% endfor %}
   {% block content %}{% endblock %}
 </main>

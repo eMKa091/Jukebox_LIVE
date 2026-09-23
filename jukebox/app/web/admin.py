@@ -212,6 +212,9 @@ SONG_FILTERS = {
     "excluded": "Excluded",
     "played": "Played",
     "all": "All",
+    # Not part of the round, so not part of the partition the other four form:
+    # these are master songs the round does not offer at all.
+    "missing": "Not in round",
 }
 
 
@@ -258,6 +261,9 @@ def _console(request: Request, event_id: int, round_id: int | None):
         ],
         "event_stats": ballots.event_stats(conn, event_id),
         "listeners": hub.subscriber_count(event_topic(event_id)),
+        # Surfaced on the tab itself, so a song added to the master list
+        # mid-gig is visible without opening the tab to look for it.
+        "missing_count": len(rounds.songs_not_in_round(conn, selected.id)),
     }
 
 
@@ -285,10 +291,23 @@ def event_console(
     elif tab == "songs":
         if filter not in SONG_FILTERS:
             filter = "available"
-        board = rounds.song_board(conn, selected.id)
         needle = q.strip().lower()
-        if needle:
-            board = [s for s in board if needle in f"{s['title']} {s['artist']}".lower()]
+
+        def matches(title: str, artist: str) -> bool:
+            return not needle or needle in f"{title} {artist}".lower()
+
+        board = [
+            s for s in rounds.song_board(conn, selected.id)
+            if matches(s["title"], s["artist"])
+        ]
+        missing = [
+            {"id": r["id"], "title": r["title"], "artist": r["artist"],
+             "status": "missing", "votes": 0}
+            for r in rounds.songs_not_in_round(conn, selected.id)
+            if matches(r["title"], r["artist"])
+        ]
+
+        by_status = {"available": "open", "excluded": "excluded", "played": "played"}
         context |= {
             "filters": SONG_FILTERS,
             "active_filter": filter,
@@ -298,12 +317,13 @@ def event_console(
                 "excluded": sum(1 for s in board if s["status"] == "excluded"),
                 "played": sum(1 for s in board if s["status"] == "played"),
                 "all": len(board),
+                "missing": len(missing),
             },
-            "board": board if filter == "all" else [
-                s for s in board
-                if s["status"] == {"available": "open", "excluded": "excluded",
-                                   "played": "played"}[filter]
-            ],
+            "board": (
+                missing if filter == "missing"
+                else board if filter == "all"
+                else [s for s in board if s["status"] == by_status[filter]]
+            ),
         }
 
     elif tab == "share":
@@ -437,11 +457,28 @@ async def round_songs(round_id: int, request: Request):
         f"&q={quote(str(form.get('q') or ''))}"
     )
 
+    if action == "add_all":
+        # No selection needed: put every master song the round lacks into it.
+        missing = [r["id"] for r in rounds.songs_not_in_round(db.read(), round_id)]
+        if not missing:
+            return redirect(back, flash=("", "This round already has every song."))
+        try:
+            added = rounds.add_songs(db, round_id=round_id, song_ids=missing, actor=user)
+        except DomainError as exc:
+            return redirect(back, flash=("bad", str(exc)))
+        hub.publish(event_topic(rnd.event_id), kind="songs", reload=True)
+        return redirect(back, flash=("", f"{added} song(s) added to round {rnd.ordinal}."))
+
     if not song_ids:
         return redirect(back, flash=("warn", "Select some songs first."))
 
     try:
-        if action == "exclude":
+        if action == "add":
+            n = rounds.add_songs(db, round_id=round_id, song_ids=song_ids, actor=user)
+            message = f"{n} song(s) added to round {rnd.ordinal}."
+            if rnd.state == "open":
+                message += " Everyone's ballot has been refreshed."
+        elif action == "exclude":
             n = rounds.set_excluded(db, round_id=round_id, song_ids=song_ids, excluded=True, actor=user)
             message = f"{n} song(s) excluded from round {rnd.ordinal}."
         elif action == "include":
@@ -495,6 +532,29 @@ def song_list(request: Request, q: str = "", show: str = "active"):
     )
 
 
+def _live_round_link(request: Request) -> tuple[str, str] | None:
+    """Where to go to put a new song on the ballot, if a gig is happening.
+
+    Adding to the master list does not add to a round -- rounds own their own
+    lists. Mid-gig that distinction costs a song, so say it where it matters
+    and link straight to the screen that fixes it.
+    """
+    conn = get_db(request).read()
+    event = events.live_event(conn)
+    if event is None:
+        return None
+    all_rounds = rounds.for_event(conn, event.id)
+    target = next((r for r in all_rounds if r.state == "open"), None)
+    if target is None:
+        target = next((r for r in all_rounds if r.state == "pending"), None)
+    if target is None:
+        return None
+    return (
+        f"/admin/events/{event.id}?tab=songs&round={target.id}&filter=missing",
+        f"Add to round {target.ordinal}",
+    )
+
+
 @router.post("/songs")
 def add_song(request: Request, title: str = Form(...), artist: str = Form(...)):
     user = current_admin(request)
@@ -502,7 +562,14 @@ def add_song(request: Request, title: str = Form(...), artist: str = Form(...)):
         songs.add(get_db(request), title=title, artist=artist, actor=user)
     except DomainError as exc:
         return redirect("/admin/songs", flash=("bad", str(exc)))
-    return redirect("/admin/songs", flash=("", f"Added {title}."))
+
+    link = _live_round_link(request)
+    if link is None:
+        return redirect("/admin/songs", flash=("", f"Added {title}."))
+    return redirect(
+        "/admin/songs",
+        flash=("warn", f"Added {title}. It is not on the ballot yet.", *link),
+    )
 
 
 @router.post("/songs/import")
@@ -521,7 +588,15 @@ async def import_songs(request: Request, file: UploadFile):
         parts.append(f"{report.duplicates} already there")
     if report.skipped:
         parts.append(f"{len(report.skipped)} skipped ({report.skipped[0]})")
-    return redirect("/admin/songs", flash=("", ", ".join(parts) + "."))
+    summary = ", ".join(parts) + "."
+
+    link = _live_round_link(request) if (report.added or report.restored) else None
+    if link is None:
+        return redirect("/admin/songs", flash=("", summary))
+    return redirect(
+        "/admin/songs",
+        flash=("warn", f"{summary} New songs are not on the ballot yet.", *link),
+    )
 
 
 @router.post("/songs/{song_id}/retire")
