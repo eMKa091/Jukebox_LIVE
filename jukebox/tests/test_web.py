@@ -305,3 +305,18 @@ def test_the_cli_does_not_need_a_signing_key(monkeypatch):
     assert load_settings(require_secret=False).database_path  # no raise
     with pytest.raises(RuntimeError, match="JUKEBOX_SECRET_KEY"):
         load_settings()  # the web app still insists
+
+
+@pytest.mark.parametrize("path", [
+    "/admin/events/1", "/admin/events/1?tab=songs", "/admin/events/1/live",
+    "/admin/events/99999", "/admin/events/new",
+])
+def test_signed_out_visitors_cannot_probe_for_event_ids(client, path):
+    """Auth is checked before the database is touched.
+
+    Otherwise the difference between 404 (no such event) and a redirect to the
+    sign-in page tells an anonymous visitor exactly which events exist.
+    """
+    response = client.get(path, follow_redirects=False)
+    assert response.status_code == 303
+    assert response.headers["location"] == "/admin/login"

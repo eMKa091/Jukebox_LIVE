@@ -1,0 +1,32 @@
+{# Everything you hand to someone else: the audience, the band. #}
+
+<h2>Links</h2>
+<div class="grid2">
+  <div class="card">
+    <h3 style="margin-top:0">For the audience</h3>
+    <p class="meta" style="word-break:break-all">{{ public_url }}</p>
+    <p><img src="/admin/events/{{ event.id }}/qr.svg" alt="QR code for {{ public_url }}"
+            style="width:190px;height:190px;background:#fff;border-radius:8px;padding:8px"></p>
+    <a class="btn ghost sm" href="/admin/events/{{ event.id }}/qr.svg"
+       download="jukebox-{{ event.slug }}.svg">Download QR</a>
+    <p class="meta" style="margin:12px 0 0">Print it for the tables. Nobody types a URL in the dark.</p>
+    {% if event.state != 'live' %}
+    <p class="meta" style="color:var(--warn)">This link shows the splash screen until the event is on air.</p>
+    {% endif %}
+  </div>
+
+  <div class="card">
+    <h3 style="margin-top:0">For the band</h3>
+    <p class="meta" style="word-break:break-all">{{ band_url }}</p>
+    <p class="meta">Signed link — no password, but not guessable. Open it on the stage tablet
+       and leave it there; it updates itself as votes land.</p>
+    <a class="btn ghost sm" href="{{ band_url }}" target="_blank" rel="noopener">Open band display</a>
+  </div>
+</div>
+
+<h2>Band notes</h2>
+<p class="meta">Shown underneath the ranking on the band display.</p>
+<form method="post" action="/admin/events/{{ event.id }}/notes" class="card">
+  <textarea name="body" placeholder="Anything the band should see on their display…">{{ notes }}</textarea>
+  <button class="btn sm" type="submit" style="margin-top:10px">Save notes</button>
+</form>

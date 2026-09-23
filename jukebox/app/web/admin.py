@@ -12,6 +12,7 @@ from __future__ import annotations
 import csv
 import io
 from datetime import datetime, timezone
+from urllib.parse import quote
 
 import qrcode
 import qrcode.image.svg
@@ -90,27 +91,72 @@ def logout():
 
 
 # ---------------------------------------------------------------- events --
+# How many past events the dashboard shows before asking. There are many more
+# gigs than the sample database suggests, and a flat list of all of them is not
+# a thing anyone can use at a soundcheck.
+PAST_PAGE = 12
+
+
 @router.get("", response_class=HTMLResponse)
-def dashboard(request: Request):
+def dashboard(request: Request, q: str = "", limit: int = PAST_PAGE):
+    """Three groups, not one list: what is on air, what is coming, what is done.
+
+    The old page put every event in one table ordered by date. That reads fine
+    with eight events and not at all with sixty.
+    """
     user = current_admin(request)
     conn = get_db(request).read()
-    rows = [
-        {
-            "event": e,
-            "stats": ballots.event_stats(conn, e.id),
-            "starts_local": _local(e.starts_at),
+
+    def decorate(event):
+        return {
+            "event": event,
+            "stats": ballots.event_stats(conn, event.id),
+            "starts_local": _local(event.starts_at),
+            "rounds": rounds.for_event(conn, event.id),
         }
-        for e in events.list_events(conn)
-    ]
+
+    everything = events.list_events(conn)
+    needle = q.strip().lower()
+    if needle:
+        everything = [e for e in everything if needle in f"{e.name} {e.venue}".lower()]
+
+    live = next((e for e in everything if e.state == "live"), None)
+    upcoming = sorted(
+        (e for e in everything if e.state in ("draft", "ready")),
+        key=lambda e: e.starts_at,
+    )
+    past = [e for e in everything if e.state == "closed"]  # already newest-first
+
     return render(
         request,
         "admin/events.html",
         nav="events",
         admin_user=user,
-        events=rows,
-        live=events.live_event(conn),
+        query=q,
+        live=decorate(live) if live else None,
+        live_round=rounds.open_round_of(conn, live.id) if live else None,
+        upcoming=[decorate(e) for e in upcoming],
+        past=[decorate(e) for e in past[:limit]],
+        past_total=len(past),
+        past_shown=min(limit, len(past)),
+        next_limit=limit + PAST_PAGE,
         song_count=len(songs.list_songs(conn)),
-        default_start=datetime.now().replace(hour=20, minute=0, second=0, microsecond=0).strftime("%Y-%m-%dT%H:%M"),
+    )
+
+
+@router.get("/events/new", response_class=HTMLResponse)
+def new_event_form(request: Request):
+    """Its own page. On the dashboard this form was permanent clutter."""
+    user = current_admin(request)
+    conn = get_db(request).read()
+    return render(
+        request,
+        "admin/event_new.html",
+        nav="events",
+        admin_user=user,
+        song_count=len(songs.list_songs(conn)),
+        default_start=datetime.now().replace(hour=20, minute=0, second=0, microsecond=0)
+        .strftime("%Y-%m-%dT%H:%M"),
     )
 
 
@@ -131,7 +177,7 @@ def create_event(
         local = datetime.fromisoformat(starts_at)
         iso = local.astimezone().astimezone(timezone.utc).isoformat().replace("+00:00", "Z")
     except ValueError:
-        return redirect("/admin", flash=("bad", "That start time is not valid."))
+        return redirect("/admin/events/new", flash=("bad", "That start time is not valid."))
 
     try:
         event = events.create(
@@ -146,36 +192,63 @@ def create_event(
         first = rounds.for_event(db.read(), event.id)[0]
         rounds.assign_all_songs(db, round_id=first.id, actor=user)
     except DomainError as exc:
-        return redirect("/admin", flash=("bad", str(exc)))
+        return redirect("/admin/events/new", flash=("bad", str(exc)))
     return redirect(f"/admin/events/{event.id}", flash=("", f"Created {event.name}."))
 
 
-@router.get("/events/{event_id}", response_class=HTMLResponse)
-def event_console(event_id: int, request: Request, round: int | None = None):
-    user = current_admin(request)
-    settings = get_settings(request)
+# The console is four tabs over one event, each a real URL so it can be
+# bookmarked, opened on a second screen, and reloaded without losing its place.
+# It used to be a single page with eight stacked sections, which meant finding
+# the stop-voting button by scrolling, in the dark, during a gig.
+TABS = [
+    ("run", "Run"),
+    ("songs", "Songs"),
+    ("share", "Share"),
+    ("data", "Data"),
+]
+
+SONG_FILTERS = {
+    "available": "Available",
+    "excluded": "Excluded",
+    "played": "Played",
+    "all": "All",
+}
+
+
+def _console(request: Request, event_id: int, round_id: int | None):
+    """Everything the console header needs, whichever tab is showing.
+
+    The header is the same on every tab on purpose: what is on air, which round,
+    and how many people are voting should never be more than a glance away.
+    """
+    # Authenticate before touching the database. Otherwise a signed-out visitor
+    # learns which event ids exist from the difference between 404 and a
+    # redirect to the sign-in page.
+    admin_user = current_admin(request)
+
     conn = get_db(request).read()
     event = events.get(conn, event_id)
     all_rounds = rounds.for_event(conn, event_id)
 
-    selected = next((r for r in all_rounds if r.id == round), None)
+    selected = next((r for r in all_rounds if r.id == round_id), None)
     if selected is None:
-        selected = next((r for r in all_rounds if r.state == "open"), all_rounds[0])
+        # Default to whatever is happening: the open round, else the last one
+        # that ran, else the first.
+        selected = next((r for r in all_rounds if r.state == "open"), None)
+        if selected is None:
+            closed = [r for r in all_rounds if r.state == "closed"]
+            selected = closed[-1] if closed else all_rounds[0]
 
-    base = str(request.base_url).rstrip("/")
-    band_token = get_tokens(request).make_band_token(event_id)
-
-    return render(
-        request,
-        "admin/event.html",
-        nav="events",
-        admin_user=user,
-        event=event,
-        starts_local=_local(event.starts_at),
-        transitions=TRANSITION_BUTTONS[event.state],
-        selected=selected,
-        next_round=any(r.ordinal == selected.ordinal + 1 for r in all_rounds),
-        round_rows=[
+    return conn, {
+        "nav": "events",
+        "admin_user": admin_user,
+        "event": event,
+        "starts_local": _local(event.starts_at),
+        "transitions": TRANSITION_BUTTONS[event.state],
+        "tabs": TABS,
+        "selected": selected,
+        "next_round": any(r.ordinal == selected.ordinal + 1 for r in all_rounds),
+        "round_rows": [
             {
                 "round": r,
                 "stats": ballots.round_stats(conn, r.id),
@@ -183,31 +256,82 @@ def event_console(event_id: int, request: Request, round: int | None = None):
             }
             for r in all_rounds
         ],
-        board=rounds.song_board(conn, selected.id),
-        tally=ballots.tally(conn, selected.id),
-        stats=ballots.round_stats(conn, selected.id),
-        listeners=hub.subscriber_count(event_topic(event_id)),
-        notes=events.band_notes(conn, event_id),
-        log=log.for_event(conn, event_id, limit=40),
-        public_url=f"{base}/e/{event.slug}",
-        band_url=f"{base}/band/{band_token}",
-        settings=settings,
-    )
+        "event_stats": ballots.event_stats(conn, event_id),
+        "listeners": hub.subscriber_count(event_topic(event_id)),
+    }
+
+
+@router.get("/events/{event_id}", response_class=HTMLResponse)
+def event_console(
+    request: Request,
+    event_id: int,
+    tab: str = "run",
+    round: int | None = None,
+    filter: str = "available",
+    q: str = "",
+):
+    if tab not in dict(TABS):
+        tab = "run"
+    conn, context = _console(request, event_id, round)
+    selected = context["selected"]
+    event = context["event"]
+
+    if tab == "run":
+        context |= {
+            "tally": ballots.tally(conn, selected.id),
+            "stats": ballots.round_stats(conn, selected.id),
+        }
+
+    elif tab == "songs":
+        if filter not in SONG_FILTERS:
+            filter = "available"
+        board = rounds.song_board(conn, selected.id)
+        needle = q.strip().lower()
+        if needle:
+            board = [s for s in board if needle in f"{s['title']} {s['artist']}".lower()]
+        context |= {
+            "filters": SONG_FILTERS,
+            "active_filter": filter,
+            "query": q,
+            "counts": {
+                "available": sum(1 for s in board if s["status"] == "open"),
+                "excluded": sum(1 for s in board if s["status"] == "excluded"),
+                "played": sum(1 for s in board if s["status"] == "played"),
+                "all": len(board),
+            },
+            "board": board if filter == "all" else [
+                s for s in board
+                if s["status"] == {"available": "open", "excluded": "excluded",
+                                   "played": "played"}[filter]
+            ],
+        }
+
+    elif tab == "share":
+        base = str(request.base_url).rstrip("/")
+        context |= {
+            "public_url": f"{base}/e/{event.slug}",
+            "band_url": f"{base}/band/{get_tokens(request).make_band_token(event_id)}",
+            "notes": events.band_notes(conn, event_id),
+        }
+
+    elif tab == "data":
+        context |= {"log": log.for_event(conn, event_id, limit=100)}
+
+    context["tab"] = tab
+    return render(request, "admin/event.html", **context)
 
 
 @router.get("/events/{event_id}/live", response_class=HTMLResponse)
 def event_live(event_id: int, request: Request, round: int | None = None):
-    current_admin(request)
-    conn = get_db(request).read()
-    all_rounds = rounds.for_event(conn, event_id)
-    selected = next((r for r in all_rounds if r.id == round), None)
-    if selected is None:
-        selected = next((r for r in all_rounds if r.state == "open"), all_rounds[0])
+    """Re-rendered in place as votes land. No page reload, no lost scroll."""
+    conn, context = _console(request, event_id, round)
+    selected = context["selected"]
     return fragment(
         "admin/_live.html",
         tally=ballots.tally(conn, selected.id),
         stats=ballots.round_stats(conn, selected.id),
-        listeners=hub.subscriber_count(event_topic(event_id)),
+        listeners=context["listeners"],
+        selected=selected,
     )
 
 
@@ -229,9 +353,9 @@ def add_round(event_id: int, request: Request):
     try:
         rnd = rounds.add_round(get_db(request), event_id=event_id, actor=user)
     except DomainError as exc:
-        return redirect(f"/admin/events/{event_id}", flash=("bad", str(exc)))
+        return redirect(f"/admin/events/{event_id}?tab=run", flash=("bad", str(exc)))
     return redirect(
-        f"/admin/events/{event_id}?round={rnd.id}",
+        f"/admin/events/{event_id}?tab=songs&round={rnd.id}",
         flash=("", f"Round {rnd.ordinal} added, with the unplayed songs carried over."),
     )
 
@@ -241,7 +365,7 @@ def save_notes(event_id: int, request: Request, body: str = Form("")):
     user = current_admin(request)
     events.update_band_notes(get_db(request), event_id=event_id, body=body, actor=user)
     hub.publish(event_topic(event_id), kind="notes")
-    return redirect(f"/admin/events/{event_id}", flash=("", "Notes saved."))
+    return redirect(f"/admin/events/{event_id}?tab=share", flash=("", "Notes saved."))
 
 
 @router.post("/events/{event_id}/delete")
@@ -256,18 +380,19 @@ def delete_event(event_id: int, request: Request):
 
 # ---------------------------------------------------------------- rounds --
 @router.post("/rounds/{round_id}/state")
-def round_state(round_id: int, request: Request, to: str = Form(...)):
+def round_state(round_id: int, request: Request, to: str = Form(...), tab: str = Form("run")):
     user = current_admin(request)
     db = get_db(request)
     rnd = rounds.get(db.read(), round_id)
+    back = f"/admin/events/{rnd.event_id}?tab={tab}&round={round_id}"
     try:
         rounds.transition(db, round_id=round_id, to=to, actor=user)
     except DomainError as exc:
-        return redirect(f"/admin/events/{rnd.event_id}?round={round_id}", flash=("bad", str(exc)))
+        return redirect(back, flash=("bad", str(exc)))
     # Opening or closing a round changes what every attendee's page should be,
     # so this one does force a reload on their side.
     hub.publish(event_topic(rnd.event_id), kind="round", reload=True)
-    return redirect(f"/admin/events/{rnd.event_id}?round={round_id}")
+    return redirect(back)
 
 
 @router.post("/rounds/{round_id}/max-votes")
@@ -275,11 +400,12 @@ def round_max_votes(round_id: int, request: Request, max_votes: int = Form(...))
     user = current_admin(request)
     db = get_db(request)
     rnd = rounds.get(db.read(), round_id)
+    back = f"/admin/events/{rnd.event_id}?tab=run&round={round_id}"
     try:
         rounds.set_max_votes(db, round_id=round_id, max_votes=max_votes, actor=user)
     except DomainError as exc:
-        return redirect(f"/admin/events/{rnd.event_id}?round={round_id}", flash=("bad", str(exc)))
-    return redirect(f"/admin/events/{rnd.event_id}?round={round_id}")
+        return redirect(back, flash=("bad", str(exc)))
+    return redirect(back)
 
 
 @router.post("/rounds/{round_id}/carry-forward")
@@ -287,14 +413,12 @@ def carry_forward(round_id: int, request: Request):
     user = current_admin(request)
     db = get_db(request)
     rnd = rounds.get(db.read(), round_id)
+    back = f"/admin/events/{rnd.event_id}?tab=songs&round={round_id}"
     try:
         moved = rounds.carry_forward(db, from_round=round_id, actor=user)
     except DomainError as exc:
-        return redirect(f"/admin/events/{rnd.event_id}?round={round_id}", flash=("bad", str(exc)))
-    return redirect(
-        f"/admin/events/{rnd.event_id}?round={round_id}",
-        flash=("", f"{moved} song(s) carried into round {rnd.ordinal + 1}."),
-    )
+        return redirect(back, flash=("bad", str(exc)))
+    return redirect(back, flash=("", f"{moved} song(s) carried into round {rnd.ordinal + 1}."))
 
 
 @router.post("/rounds/{round_id}/songs")
@@ -305,7 +429,13 @@ async def round_songs(round_id: int, request: Request):
     form = await request.form()
     action = form.get("action")
     song_ids = [int(v) for v in form.getlist("song_ids")]
-    back = f"/admin/events/{rnd.event_id}?round={round_id}"
+    # Return to exactly the view the action was fired from -- same tab, same
+    # filter, same search -- so a bulk edit does not throw away where you were.
+    back = (
+        f"/admin/events/{rnd.event_id}?tab=songs&round={round_id}"
+        f"&filter={form.get('filter') or 'available'}"
+        f"&q={quote(str(form.get('q') or ''))}"
+    )
 
     if not song_ids:
         return redirect(back, flash=("warn", "Select some songs first."))
@@ -334,17 +464,34 @@ async def round_songs(round_id: int, request: Request):
 
 # ----------------------------------------------------------------- songs --
 @router.get("/songs", response_class=HTMLResponse)
-def song_list(request: Request):
+def song_list(request: Request, q: str = "", show: str = "active"):
+    """The master list, searchable.
+
+    The catalogue is several hundred songs, not the hundred-odd in the sample
+    database, so a flat unfiltered table is not usable.
+    """
     user = current_admin(request)
     conn = get_db(request).read()
     everything = songs.list_songs(conn, include_retired=True)
+
+    active = [s for s in everything if not s.retired]
+    retired = [s for s in everything if s.retired]
+    shown = retired if show == "retired" else active
+
+    needle = q.strip().lower()
+    if needle:
+        shown = [s for s in shown if needle in f"{s.title} {s.artist}".lower()]
+
     return render(
         request,
         "admin/songs.html",
         nav="songs",
         admin_user=user,
-        active=[s for s in everything if not s.retired],
-        retired=[s for s in everything if s.retired],
+        query=q,
+        show=show,
+        shown=shown,
+        active_count=len(active),
+        retired_count=len(retired),
     )
 
 

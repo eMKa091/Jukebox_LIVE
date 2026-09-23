@@ -246,3 +246,117 @@ body.band .rank li { padding: 16px 0; }
 body.band .rank .who b { font-size: 21px; }
 body.band .rank .pos { width: 40px; height: 40px; font-size: 17px; }
 body.band h1 { font-size: 32px; }
+
+/* =========================================================================
+ * Admin console structure
+ *
+ * The console is a fixed header — what is on air, which round, how many
+ * people — over four tabs. The header never moves between tabs, because at a
+ * gig those three facts are what you look up, and hunting for them is the
+ * thing the old single-page console got wrong.
+ * ====================================================================== */
+
+.console {
+  background: var(--surface); border: 1px solid var(--line);
+  border-radius: var(--radius); padding: 18px 18px 0; margin-top: 18px;
+}
+.console-head { display: flex; align-items: flex-start; gap: 18px; flex-wrap: wrap; }
+.console-head h1 { margin: 0 0 4px; font-size: 24px; }
+.console-head .grow { flex: 1; min-width: 220px; }
+.console-live { display: flex; gap: 20px; align-items: baseline; }
+.console-live b { font-size: 22px; font-variant-numeric: tabular-nums; line-height: 1; }
+.console-live span { font-size: 11px; color: var(--faint); display: block; margin-top: 3px; }
+
+/* The round strip: every round, its state, one tap to switch. */
+.rounds { display: flex; gap: 8px; flex-wrap: wrap; margin: 16px 0 0; }
+.rnd {
+  display: flex; flex-direction: column; gap: 3px; min-width: 78px;
+  padding: 8px 12px; border-radius: 8px; text-decoration: none;
+  border: 1px solid var(--line-strong); background: var(--surface-2); color: var(--muted);
+}
+.rnd b { font-size: 13px; font-weight: 700; color: var(--ink); }
+.rnd small { font-size: 10px; letter-spacing: .06em; text-transform: uppercase; }
+.rnd.on { border-color: var(--accent); background: var(--accent-soft); }
+.rnd.on b { color: var(--accent); }
+.rnd.is-open { border-color: var(--accent); }
+.rnd.is-open small { color: var(--accent); }
+
+.tabs { display: flex; gap: 2px; margin: 18px -18px 0; padding: 0 12px; border-top: 1px solid var(--line); }
+.tabs a {
+  padding: 13px 14px; text-decoration: none; color: var(--muted);
+  font-size: 14px; font-weight: 600; border-bottom: 2px solid transparent; margin-bottom: -1px;
+}
+.tabs a.on { color: var(--accent); border-bottom-color: var(--accent); }
+.tabs a:hover { color: var(--ink); }
+
+.panel { margin-top: 22px; }
+.panel > h2:first-child { margin-top: 0; }
+
+/* One prominent control per screen, never two competing. */
+.bigaction {
+  display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
+  padding: 18px; border-radius: var(--radius);
+  border: 1px solid var(--line-strong); background: var(--surface);
+}
+.bigaction.hot { border-color: var(--accent); background: var(--accent-soft); }
+.bigaction .grow { flex: 1; min-width: 200px; }
+.bigaction h3 { margin: 0 0 3px; color: var(--ink); font-size: 16px; }
+.bigaction p { margin: 0; font-size: 13.5px; }
+.bigaction .btn { min-height: 52px; padding: 0 26px; font-size: 16px; }
+
+/* Filter row: segmented control with live counts. */
+.segments { display: flex; gap: 6px; flex-wrap: wrap; }
+.segments a {
+  padding: 7px 13px; border-radius: 7px; text-decoration: none; font-size: 13px; font-weight: 600;
+  border: 1px solid var(--line-strong); background: var(--surface-2); color: var(--muted);
+}
+.segments a.on { border-color: var(--accent); background: var(--accent-soft); color: var(--accent); }
+.segments a i { font-style: normal; opacity: .65; font-variant-numeric: tabular-nums; }
+
+.toolbar { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-bottom: 12px; }
+.toolbar input[type="search"] { flex: 1; min-width: 180px; min-height: 40px; }
+
+/* Bulk actions stay reachable while a long list scrolls. */
+.bulkbar {
+  position: sticky; bottom: 0; z-index: 5;
+  background: color-mix(in srgb, var(--surface) 96%, transparent);
+  backdrop-filter: blur(10px);
+  border-top: 1px solid var(--line-strong);
+  padding: 12px 0 calc(12px + env(safe-area-inset-bottom));
+  display: flex; gap: 8px; flex-wrap: wrap; align-items: center;
+}
+.bulkbar .hint { font-size: 12.5px; color: var(--faint); margin-right: auto; }
+
+/* Event groups on the dashboard. */
+.group { margin-top: 34px; }
+.group > header { display: flex; align-items: baseline; gap: 12px; margin-bottom: 10px; }
+.group > header h2 { margin: 0; }
+.group > header .n { font-size: 12px; color: var(--faint); font-variant-numeric: tabular-nums; }
+
+.evrow {
+  display: flex; align-items: center; gap: 16px; padding: 14px 16px;
+  border: 1px solid var(--line); border-radius: var(--radius);
+  background: var(--surface); text-decoration: none; color: inherit;
+}
+.evrow + .evrow { margin-top: 8px; }
+.evrow:hover { border-color: var(--line-strong); }
+.evrow .when {
+  flex: none; width: 92px; font-size: 12px; color: var(--faint); line-height: 1.35;
+  font-variant-numeric: tabular-nums;
+}
+.evrow .what { flex: 1; min-width: 0; }
+.evrow .what b { display: block; font-weight: 600; }
+.evrow .what span { font-size: 12.5px; color: var(--faint); }
+.evrow .tally { text-align: right; font-size: 12.5px; color: var(--faint); font-variant-numeric: tabular-nums; }
+.evrow .tally b { display: block; font-size: 16px; color: var(--ink); }
+
+.onair {
+  border: 1px solid var(--accent); background: var(--accent-soft);
+  border-radius: var(--radius); padding: 18px; display: flex; gap: 18px;
+  align-items: center; flex-wrap: wrap;
+}
+.onair .grow { flex: 1; min-width: 220px; }
+.onair h2 { margin: 0 0 4px; font-size: 20px; }
+
+.empty { padding: 26px 18px; border: 1px dashed var(--line-strong); border-radius: var(--radius);
+         color: var(--faint); font-size: 14px; text-align: center; }

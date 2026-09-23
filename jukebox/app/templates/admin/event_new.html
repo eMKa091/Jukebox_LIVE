@@ -1,0 +1,38 @@
+{% extends "admin/base.html" %}
+{% block title %}New event — Jukebox LIVE{% endblock %}
+{% block content %}
+
+<p class="meta" style="margin:24px 0 0"><a href="/admin">← Events</a></p>
+<h1>New event</h1>
+
+{% if song_count == 0 %}
+<div class="notice warn">
+  <p>Import the song list first — an event with no songs cannot open a round.
+     <a href="/admin/songs">Go to Songs</a>.</p>
+</div>
+{% else %}
+<form method="post" action="/admin/events" class="card" style="max-width:620px">
+  <label class="field"><span>Name — this is what the audience sees</span>
+    <input type="text" name="name" required autofocus placeholder="Oslava Rychvald"></label>
+
+  <div class="grid2">
+    <label class="field"><span>Venue</span>
+      <input type="text" name="venue" placeholder="Kulturní dům"></label>
+    <label class="field"><span>Starts</span>
+      <input type="datetime-local" name="starts_at" value="{{ default_start }}" required></label>
+    <label class="field"><span>Rounds</span>
+      <input type="number" name="round_count" value="1" min="1" max="10"></label>
+    <label class="field"><span>Votes per person, per round</span>
+      <input type="number" name="max_votes" value="5" min="1" max="50"></label>
+  </div>
+
+  <button class="btn" type="submit">Create event</button>
+  <p class="meta" style="margin:12px 0 0">
+    All {{ song_count }} songs go into round 1 automatically. You can exclude
+    the ones you are playing anyway from the Songs tab, and add rounds later.
+    The event starts as a draft — nothing is public until you put it on air.
+  </p>
+</form>
+{% endif %}
+
+{% endblock %}

@@ -1,0 +1,45 @@
+{# Exports and the record of what happened. #}
+
+<h2>Export</h2>
+<div class="row">
+  <a class="btn ghost sm" href="/admin/events/{{ event.id }}/export.csv">Votes (CSV)</a>
+  <a class="btn ghost sm" href="/admin/events/{{ event.id }}/results.csv">Results (CSV)</a>
+</div>
+<p class="meta" style="margin-top:8px">
+  Semicolon-separated with a BOM, so Excel opens them without mangling the accents.
+</p>
+
+<h2>What happened</h2>
+<p class="meta">
+  Every state change, appended and never edited. This is the record the old
+  system did not keep — which is why nobody can say whether its five zero-vote
+  events were never run or lost their data.
+</p>
+<div class="card">
+  {% for entry in log %}
+  <div class="logline">
+    <time>{{ entry.at[:19]|replace('T', ' ') }}</time> ·
+    <b>{{ entry.action }}</b> · {{ entry.actor }}
+    {% if entry.payload %}<span class="meta">{{ entry.payload }}</span>{% endif %}
+  </div>
+  {% else %}
+  {# An event carried over from the Streamlit system has no history, because
+     that system kept none. Say so, rather than showing an empty box under a
+     paragraph promising a complete record. #}
+  <p class="meta" style="margin:0">
+    Nothing recorded. Events imported from the old system have no history —
+    it never kept any.
+  </p>
+  {% endfor %}
+</div>
+
+<h2>Danger</h2>
+<div class="card" style="border-color:var(--danger-soft)">
+  <h3 style="margin-top:0;color:var(--danger)">Delete this event</h3>
+  <p class="meta">Removes the event, its rounds and its votes. The audit log entry stays.
+     {% if event.state == 'live' %}Close the event first.{% endif %}</p>
+  <form method="post" action="/admin/events/{{ event.id }}/delete"
+        onsubmit="return confirm('Delete {{ event.name }} and all its votes? This cannot be undone.')">
+    <button class="btn danger" type="submit" {{ 'disabled' if event.state == 'live' }}>Delete event</button>
+  </form>
+</div>

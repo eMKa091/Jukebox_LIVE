@@ -4,185 +4,57 @@
 
 <div data-stream="/admin/events/{{ event.id }}/stream" hidden></div>
 
-<div class="row between">
-  <div>
-    <h1 style="margin-bottom:2px">{{ event.name }}</h1>
-    <p class="meta">{{ starts_local }}{% if event.venue %} · {{ event.venue }}{% endif %}
-       · <span class="chip {{ event.state }}">{{ event.state }}</span></p>
-  </div>
-</div>
+<p class="meta" style="margin:20px 0 0"><a href="/admin">← Events</a></p>
 
-<!-- ---------------------------------------------------------- on air --- -->
-<div class="card">
-  <div class="row between">
-    <div>
-      <h3 style="margin:0 0 4px">On air</h3>
+{# ===================================================================== #}
+{#  The console header. Identical on every tab: what is on air, which     #}
+{#  round, how many people. Those three facts are what you look up at a   #}
+{#  gig, so they never move.                                             #}
+{# ===================================================================== #}
+<div class="console">
+  <div class="console-head">
+    <div class="grow">
+      <h1>{{ event.name }}</h1>
       <p class="meta" style="margin:0">
-        {% if event.state == 'live' %}Attendees can reach this event now.
-        {% elif event.state == 'ready' %}Ready to go. Nothing is public yet.
-        {% elif event.state == 'draft' %}Still a draft. Check the song list first.
-        {% else %}Closed. Results below are final.{% endif %}
+        {{ starts_local }}{% if event.venue %} · {{ event.venue }}{% endif %}
+        · <span class="chip {{ event.state }}">{{ event.state }}</span>
       </p>
     </div>
-    <div class="row">
-      {% for action, label, style in transitions %}
-      <form method="post" action="/admin/events/{{ event.id }}/state" style="margin:0">
-        <input type="hidden" name="to" value="{{ action }}">
-        <button class="btn {{ style }}" type="submit">{{ label }}</button>
-      </form>
-      {% endfor %}
+    <div class="console-live">
+      <div><b>{{ event_stats.voters }}</b><span>voters</span></div>
+      <div><b>{{ event_stats.votes }}</b><span>votes</span></div>
+      <div><b>{{ listeners }}</b><span>screens</span></div>
     </div>
   </div>
+
+  <nav class="rounds" aria-label="Rounds">
+    {% for r in round_rows %}
+    <a class="rnd {{ 'on' if r.round.id == selected.id }} {{ 'is-open' if r.round.state == 'open' }}"
+       href="/admin/events/{{ event.id }}?tab={{ tab }}&amp;round={{ r.round.id }}">
+      <b>Round {{ r.round.ordinal }}</b>
+      <small>{{ r.round.state }} · {{ r.stats.votes }}</small>
+    </a>
+    {% endfor %}
+    <form method="post" action="/admin/events/{{ event.id }}/rounds" style="margin:0">
+      <button class="rnd" type="submit" style="cursor:pointer;height:100%">
+        <b>+</b><small>add round</small></button>
+    </form>
+  </nav>
+
+  <nav class="tabs" aria-label="Sections">
+    {% for key, label in tabs %}
+    <a class="{{ 'on' if key == tab }}"
+       href="/admin/events/{{ event.id }}?tab={{ key }}&amp;round={{ selected.id }}">{{ label }}</a>
+    {% endfor %}
+  </nav>
 </div>
 
-<!-- ------------------------------------------------------------ rounds -- -->
-<h2>Rounds</h2>
-<div class="tablewrap">
-  <table>
-    <thead><tr><th>Round</th><th>State</th><th class="num">Max votes</th>
-               <th class="num">Songs</th><th class="num">Voters</th><th class="num">Votes</th><th></th></tr></thead>
-    <tbody>
-      {% for r in round_rows %}
-      <tr {% if r.round.id == selected.id %}style="background:var(--surface-2)"{% endif %}>
-        <td><a href="/admin/events/{{ event.id }}?round={{ r.round.id }}"><b>Round {{ r.round.ordinal }}</b></a></td>
-        <td><span class="chip {{ r.round.state }}">{{ r.round.state }}</span></td>
-        <td class="num">
-          <form method="post" action="/admin/rounds/{{ r.round.id }}/max-votes" class="row" style="justify-content:flex-end;gap:6px;margin:0">
-            <input type="number" name="max_votes" value="{{ r.round.max_votes }}" min="1" max="50"
-                   style="width:74px;min-height:34px;padding:4px 8px"
-                   {{ 'disabled' if r.round.state == 'open' }}>
-            <button class="btn ghost sm" type="submit" {{ 'disabled' if r.round.state == 'open' }}>Set</button>
-          </form>
-        </td>
-        <td class="num">{{ r.votable }}</td>
-        <td class="num">{{ r.stats.voters }}</td>
-        <td class="num">{{ r.stats.votes }}</td>
-        <td style="text-align:right">
-          {% if r.round.state == 'open' %}
-            <form method="post" action="/admin/rounds/{{ r.round.id }}/state" style="margin:0">
-              <input type="hidden" name="to" value="closed">
-              <button class="btn danger" type="submit">Stop voting</button>
-            </form>
-          {% else %}
-            <form method="post" action="/admin/rounds/{{ r.round.id }}/state" style="margin:0">
-              <input type="hidden" name="to" value="open">
-              <button class="btn" type="submit" {{ 'disabled' if event.state != 'live' }}>Start voting</button>
-            </form>
-          {% endif %}
-        </td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
-</div>
-
-<div class="row" style="margin-top:12px">
-  <form method="post" action="/admin/events/{{ event.id }}/rounds" style="margin:0">
-    <button class="btn ghost sm" type="submit">Add a round</button>
-  </form>
-  {% if next_round %}
-  <form method="post" action="/admin/rounds/{{ selected.id }}/carry-forward" style="margin:0">
-    <button class="btn ghost sm" type="submit">
-      Carry unplayed songs into round {{ selected.ordinal + 1 }}</button>
-  </form>
-  {% endif %}
-</div>
-
-<!-- ----------------------------------------------------------- results -- -->
-<h2>Round {{ selected.ordinal }} — live results</h2>
-<div data-refresh="/admin/events/{{ event.id }}/live?round={{ selected.id }}">
-  {% include "admin/_live.html" %}
-</div>
-
-<!-- ------------------------------------------------------------- songs -- -->
-<h2>Round {{ selected.ordinal }} — song list</h2>
-<p class="meta">Exclude what the band will play anyway. Mark as played after the
-   round, so the song does not come back in the next one.</p>
-
-<form method="post" action="/admin/rounds/{{ selected.id }}/songs">
-  <div class="tablewrap">
-    <table>
-      <thead><tr><th style="width:40px"></th><th>Song</th><th>Status</th><th class="num">Votes</th></tr></thead>
-      <tbody>
-        {% for song in board %}
-        <tr>
-          <td><input type="checkbox" name="song_ids" value="{{ song.id }}"
-                     style="width:20px;height:20px;min-height:0"
-                     aria-label="Select {{ song.title }}"></td>
-          <td><b>{{ song.title }}</b><div class="meta">{{ song.artist }}</div></td>
-          <td><span class="chip {{ song.status }}">{{ song.status }}</span></td>
-          <td class="num">{{ song.votes }}</td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
-  </div>
-  <div class="row" style="margin-top:12px">
-    <button class="btn ghost sm" type="submit" name="action" value="exclude">Exclude from round</button>
-    <button class="btn ghost sm" type="submit" name="action" value="include">Put back</button>
-    <button class="btn sm" type="submit" name="action" value="played">Mark as played</button>
-    <button class="btn ghost sm" type="submit" name="action" value="unplayed">Un-mark played</button>
-  </div>
-</form>
-
-<!-- ---------------------------------------------------------- sharing --- -->
-<h2>Links</h2>
-<div class="grid2">
-  <div class="card">
-    <h3 style="margin-top:0">For the audience</h3>
-    <p class="meta" style="word-break:break-all">{{ public_url }}</p>
-    <p><img src="/admin/events/{{ event.id }}/qr.svg" alt="QR code for {{ public_url }}"
-            style="width:190px;height:190px;background:#fff;border-radius:8px;padding:8px"></p>
-    <a class="btn ghost sm" href="/admin/events/{{ event.id }}/qr.svg" download="jukebox-{{ event.slug }}.svg">Download QR</a>
-  </div>
-  <div class="card">
-    <h3 style="margin-top:0">For the band</h3>
-    <p class="meta" style="word-break:break-all">{{ band_url }}</p>
-    <p class="meta">Signed link — no password, but not guessable. Open it on the stage tablet.</p>
-    <a class="btn ghost sm" href="{{ band_url }}" target="_blank" rel="noopener">Open the band display</a>
-  </div>
-</div>
-
-<h2>Band notes</h2>
-<form method="post" action="/admin/events/{{ event.id }}/notes" class="card">
-  <textarea name="body" placeholder="Anything the band should see on their display…">{{ notes }}</textarea>
-  <button class="btn sm" type="submit" style="margin-top:10px">Save notes</button>
-</form>
-
-<!-- ----------------------------------------------------------- exports -- -->
-<h2>Data</h2>
-<div class="row">
-  <a class="btn ghost sm" href="/admin/events/{{ event.id }}/export.csv">Export votes (CSV)</a>
-  <a class="btn ghost sm" href="/admin/events/{{ event.id }}/results.csv">Export results (CSV)</a>
-</div>
-<p class="meta" style="margin-top:8px">
-  Always available — not hidden behind another button (F12). A dump is also
-  written automatically whenever the event closes.
-</p>
-
-<!-- --------------------------------------------------------------- log -- -->
-<h2>What happened</h2>
-<p class="meta">Every state change, appended and never edited. This is the record
-   the legacy system did not keep.</p>
-<div class="card">
-  {% for entry in log %}
-  <div class="logline">
-    <time>{{ entry.at[:19]|replace('T', ' ') }}</time> ·
-    <b>{{ entry.action }}</b> · {{ entry.actor }}
-    {% if entry.payload %}<span class="meta">{{ entry.payload }}</span>{% endif %}
-  </div>
-  {% else %}
-  <p class="meta" style="margin:0">Nothing yet.</p>
-  {% endfor %}
-</div>
-
-<div class="card" style="border-color:var(--danger-soft);margin-top:24px">
-  <h3 style="margin-top:0;color:var(--danger)">Delete this event</h3>
-  <p class="meta">Removes the event, its rounds and its votes. The audit log entry stays.</p>
-  <form method="post" action="/admin/events/{{ event.id }}/delete"
-        onsubmit="return confirm('Delete {{ event.name }} and all its votes?')">
-    <button class="btn danger" type="submit" {{ 'disabled' if event.state == 'live' }}>Delete event</button>
-  </form>
+<div class="panel">
+{% if tab == 'run' %}{% include "admin/_tab_run.html" %}
+{% elif tab == 'songs' %}{% include "admin/_tab_songs.html" %}
+{% elif tab == 'share' %}{% include "admin/_tab_share.html" %}
+{% elif tab == 'data' %}{% include "admin/_tab_data.html" %}
+{% endif %}
 </div>
 
 {% endblock %}

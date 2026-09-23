@@ -2,60 +2,76 @@
 {% block title %}Events — Jukebox LIVE{% endblock %}
 {% block content %}
 
-<h1>Events</h1>
+<div class="row between" style="margin:24px 0 0">
+  <h1 style="margin:0">Events</h1>
+  <a class="btn" href="/admin/events/new">New event</a>
+</div>
+
+{% if song_count == 0 %}
+<div class="notice warn" style="margin-top:16px">
+  <p>There are no songs yet. <a href="/admin/songs">Import the song list</a> before creating an event.</p>
+</div>
+{% endif %}
 
 {% if live %}
-<div class="notice">
-  <p><b>{{ live.name }}</b> is on air right now.
-     <a href="/admin/events/{{ live.id }}">Open the console →</a></p>
+<div class="onair" style="margin-top:20px">
+  <div class="grow">
+    <span class="livedot"><i></i> On air</span>
+    <h2 style="margin-top:6px">{{ live.event.name }}</h2>
+    <p class="meta" style="margin:0">
+      {% if live_round %}Round {{ live_round.ordinal }} is open{% else %}No round open{% endif %}
+      · {{ live.stats.voters }} voters · {{ live.stats.votes }} votes
+    </p>
+  </div>
+  <a class="btn" href="/admin/events/{{ live.event.id }}">Open console</a>
 </div>
 {% endif %}
 
-<div class="card">
-  <h3 style="margin-top:0">New event</h3>
-  {% if song_count == 0 %}
-    <p>Upload the song list first — <a href="/admin/songs">Songs</a>.</p>
+<form method="get" action="/admin" class="toolbar" style="margin-top:24px">
+  <input type="search" name="q" value="{{ query }}" placeholder="Search events by name or venue…">
+  {% if query %}<a class="btn ghost sm" href="/admin">Clear</a>{% endif %}
+  <button class="btn ghost sm" type="submit">Search</button>
+</form>
+
+{# --- Coming up: what needs preparing. Soonest first. --------------------- #}
+<section class="group">
+  <header><h2>Coming up</h2><span class="n">{{ upcoming|length }}</span></header>
+  {% for row in upcoming %}
+  <a class="evrow" href="/admin/events/{{ row.event.id }}">
+    <span class="when">{{ row.starts_local }}</span>
+    <span class="what">
+      <b>{{ row.event.name }}</b>
+      <span>{{ row.event.venue or '—' }} · {{ row.rounds|length }} round{{ '' if row.rounds|length == 1 else 's' }}</span>
+    </span>
+    <span class="chip {{ row.event.state }}">{{ row.event.state }}</span>
+  </a>
   {% else %}
-  <form method="post" action="/admin/events">
-    <div class="grid2">
-      <label class="field"><span>Name</span>
-        <input type="text" name="name" required placeholder="Oslava Rychvald"></label>
-      <label class="field"><span>Venue</span>
-        <input type="text" name="venue" placeholder="Kulturní dům"></label>
-      <label class="field"><span>Starts</span>
-        <input type="datetime-local" name="starts_at" value="{{ default_start }}" required></label>
-      <label class="field"><span>Rounds</span>
-        <input type="number" name="round_count" value="1" min="1" max="10"></label>
-      <label class="field"><span>Votes per person, per round</span>
-        <input type="number" name="max_votes" value="5" min="1" max="50"></label>
-    </div>
-    <button class="btn" type="submit">Create event</button>
-    <p class="meta" style="margin:10px 0 0">All {{ song_count }} songs are assigned to round 1 automatically.</p>
-  </form>
-  {% endif %}
-</div>
+  <div class="empty">Nothing scheduled. <a href="/admin/events/new">Create an event</a>.</div>
+  {% endfor %}
+</section>
 
-{% if events %}
-<div class="tablewrap" style="margin-top:20px">
-  <table>
-    <thead><tr><th>Event</th><th>Starts</th><th>State</th><th class="num">Voters</th><th class="num">Votes</th><th></th></tr></thead>
-    <tbody>
-      {% for row in events %}
-      <tr>
-        <td><a href="/admin/events/{{ row.event.id }}"><b>{{ row.event.name }}</b></a>
-            {% if row.event.venue %}<div class="meta">{{ row.event.venue }}</div>{% endif %}</td>
-        <td>{{ row.starts_local }}</td>
-        <td><span class="chip {{ row.event.state }}">{{ row.event.state }}</span></td>
-        <td class="num">{{ row.stats.voters }}</td>
-        <td class="num">{{ row.stats.votes }}</td>
-        <td><a class="btn ghost sm" href="/admin/events/{{ row.event.id }}">Open</a></td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
-</div>
-{% else %}
-<p class="meta" style="margin-top:20px">No events yet.</p>
-{% endif %}
+{# --- Done: the archive. Paged, because there are many. ------------------- #}
+<section class="group">
+  <header><h2>Done</h2><span class="n">{{ past_shown }} of {{ past_total }}</span></header>
+  {% for row in past %}
+  <a class="evrow" href="/admin/events/{{ row.event.id }}?tab=data">
+    <span class="when">{{ row.starts_local }}</span>
+    <span class="what">
+      <b>{{ row.event.name }}</b>
+      <span>{{ row.event.venue or '—' }}</span>
+    </span>
+    <span class="tally"><b>{{ row.stats.votes }}</b>votes · {{ row.stats.voters }} people</span>
+  </a>
+  {% else %}
+  <div class="empty">{% if query %}No past events match “{{ query }}”.{% else %}No events have run yet.{% endif %}</div>
+  {% endfor %}
+
+  {% if past_total > past_shown %}
+  <p style="margin-top:12px">
+    <a class="btn ghost sm" href="/admin?limit={{ next_limit }}{% if query %}&amp;q={{ query }}{% endif %}">
+      Show {{ past_total - past_shown }} more</a>
+  </p>
+  {% endif %}
+</section>
 
 {% endblock %}
