@@ -55,7 +55,7 @@ Mapping decisions that need a call from you:
 
 | Old | New | Decision |
 |---|---|---|
-| `votes.user_id` (free text, incl. `Martin` / `Martin `) | `voters.display_name` | Trim whitespace, then treat identical trimmed names within one event as the same voter. **Confirm.** |
+| `votes.user_id` (free text, incl. `Martin` / `Martin `) | `voters.display_name` | **One voter per distinct raw string.** Merging was tried and reverted — two merged voters who picked the same song collide on `UNIQUE (round_id, voter_id, song_id)` and one vote disappears; at production scale that cost 1,199 of 16,350 votes and moved 1,093 tallies. Historical data is reproduced, not improved. Near-identical names are reported, not merged. |
 | `votes.round_id` = round *number* | `rounds.id` | Synthesise one `rounds` row per event (`ordinal = 1`, `max_votes = 5`). All eight live events are single-round. |
 | `events.date` `DD.MM.YYYY` | `starts_at timestamptz` | Parse as 20:00 Europe/Prague. Times were never recorded; this is a stated assumption, not a recovery. |
 | `event_songs` with `round_id IS NULL` | `round_songs` | Attach to that event's synthesised round 1. |
@@ -63,7 +63,11 @@ Mapping decisions that need a call from you:
 | The 5 zero-vote events (11–15) | migrated as `closed`, zero votes | Preserved as-is. We cannot recover what was never written. |
 
 **Gate G2 — all four must pass, in CI, against the real backup file:**
-- Row counts: 8 events, 112 songs, 45 votes, 9 distinct voters.
+- Row counts derived from the source, not hardcoded — the copy in this
+  repository holds 8 events and 45 votes, the production database holds many
+  more, and a test pinned to the sample would fail on the real thing at the
+  worst moment. A separate test runs the whole gate against a synthesised
+  60-event, 420-song, ~15,000-vote database.
 - Every `votes.song` value resolves to a `songs.id`. Zero orphans.
   (Today this join works only by SQLite type coercion — [F14](03-findings.md).)
 - Per-event vote tallies are byte-identical to the old `results.py` output.

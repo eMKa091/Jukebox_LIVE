@@ -14,9 +14,9 @@ The mapping decisions, all of them recorded in docs/06-migration-plan.md:
 
   legacy                              new
   ---------------------------------   ------------------------------------
-  votes.user_id (free text)           voters.display_name, whitespace-trimmed;
-                                      identical trimmed names inside one event
-                                      are treated as one person
+  votes.user_id (free text)           one voter row per DISTINCT RAW STRING
+                                      per event. 'Martin' and 'Martin ' stay
+                                      two voters -- see the note below
   votes.round_id (a round *number*)   rounds.id of that event's round 1
   votes.song (TEXT holding an int)    votes.song_id (INTEGER FK)
   events.date 'DD.MM.YYYY'            starts_at, at 20:00 Europe/Prague, in UTC
@@ -29,6 +29,25 @@ The mapping decisions, all of them recorded in docs/06-migration-plan.md:
 Every legacy event in the real data is single-round, so exactly one round is
 synthesised per event. Multi-round events would need a decision about which
 round each vote belonged to, and the legacy data does not record it.
+
+On not merging names
+--------------------
+An earlier version of this script treated 'Martin' and 'Martin ' inside one
+event as the same person, on the grounds that they probably were. That is a
+guess about who someone was, applied to data that cannot confirm it -- and it
+is destructive, because two merged voters who both picked the same song collide
+on UNIQUE (round_id, voter_id, song_id) and one vote silently disappears.
+Against a production-scale database that cost 1,199 of 16,350 votes and moved
+1,093 song tallies.
+
+The rule now is: historical data is reproduced, not improved. Each distinct raw
+string becomes its own voter, so every tally the band saw is the tally they
+still see. Names that differ only by whitespace or case are reported at the end
+as `ambiguous_names` so the operator knows they exist.
+
+Real voter identity -- one ballot per device -- starts with the first event run
+on the new system, where there is an actual device token to key on. It cannot
+be back-dated onto data that never had one.
 """
 
 from __future__ import annotations
@@ -166,29 +185,39 @@ def migrate(old_path: Path, new_path: Path, *, force: bool) -> dict:
             counts["round_songs"] += 1
 
         # -- voters, reconstructed from the free-text names ---------------
-        # The legacy schema has no voter table: a voter is whatever string was
-        # typed. Trimmed names collide deliberately -- the live data contains
-        # both 'Martin' and 'Martin ' and they are the same person.
+        # The legacy schema has no voter table: a voter is whatever string
+        # someone typed. One row per distinct raw string, so the tallies are
+        # reproduced exactly. See "On not merging names" above.
         voter_map: dict[tuple[int, str], str] = {}
+        seen_normalised: dict[tuple[int, str], str] = {}
         for row in old.execute(
             "SELECT DISTINCT event_id, user_id FROM votes ORDER BY event_id, user_id"
         ):
             event_id = event_map.get(row["event_id"])
-            name = (row["user_id"] or "").strip()
-            if event_id is None or not name:
+            raw = row["user_id"] or ""
+            if event_id is None or not raw.strip():
                 continue
-            key = (row["event_id"], name.lower())
+
+            key = (row["event_id"], raw)
             if key in voter_map:
-                counts["voters_merged"] += 1
                 continue
+
+            # Flag, but do not act on, names that differ only in whitespace or
+            # case. The operator can see them; the migration does not decide.
+            normalised = (row["event_id"], raw.strip().lower())
+            if normalised in seen_normalised:
+                counts["ambiguous_names"] += 1
+            else:
+                seen_normalised[normalised] = raw
+
             voter_id = uuid.uuid4().hex
             conn.execute(
                 "INSERT INTO voters (id, event_id, display_name, device_token, created_at)"
                 " VALUES (?, ?, ?, ?, ?)",
                 # No device ever existed for these people. A synthetic token
-                # keeps the UNIQUE(event, device) constraint honest without
+                # keeps UNIQUE (event_id, device_token) honest without
                 # pretending the identity is real.
-                (voter_id, event_id, name, f"legacy:{uuid.uuid4().hex}", utcnow()),
+                (voter_id, event_id, raw.strip(), f"legacy:{uuid.uuid4().hex}", utcnow()),
             )
             voter_map[key] = voter_id
             counts["voters"] += 1
@@ -200,8 +229,7 @@ def migrate(old_path: Path, new_path: Path, *, force: bool) -> dict:
         # dropped (F14).
         for row in old.execute("SELECT * FROM votes ORDER BY id"):
             round_id = round_map.get(row["event_id"])
-            name = (row["user_id"] or "").strip()
-            voter_id = voter_map.get((row["event_id"], name.lower()))
+            voter_id = voter_map.get((row["event_id"], row["user_id"] or ""))
             try:
                 legacy_song_id = int(str(row["song"]).strip())
             except (TypeError, ValueError):
@@ -258,13 +286,31 @@ def verify(old_path: Path, new_path: Path) -> list[str]:
         problems.append(f"events: {old_events} -> {new_events}")
 
     # 2. Every vote that pointed at a real song survived.
+    #
+    # Counted DISTINCT over (voter, song, event, round). The legacy app's
+    # submit_votes() refused to write the same tuple twice, and the production
+    # blob indeed holds none -- but a blob written by an older build, or edited
+    # by hand, could. Such rows are duplicates of each other, not distinct
+    # votes, and collapsing them is correct; counting raw rows would report
+    # that correct behaviour as data loss.
+    resolvable = (
+        "FROM votes v JOIN songs s ON CAST(v.song AS INTEGER) = s.id"
+        " WHERE v.event_id IN (SELECT id FROM events)"
+        "   AND trim(COALESCE(v.user_id,'')) <> ''"
+    )
+    old_rows = one(old, f"SELECT COUNT(*) {resolvable}")
     old_votes = one(
         old,
-        "SELECT COUNT(*) FROM votes v JOIN songs s ON CAST(v.song AS INTEGER) = s.id",
+        f"SELECT COUNT(*) FROM (SELECT DISTINCT v.user_id, v.song, v.event_id, v.round_id {resolvable})",
     )
     new_votes = one(new, "SELECT COUNT(*) FROM votes")
+    if old_rows != old_votes:
+        problems.append(
+            f"NOTE {old_rows - old_votes} duplicate row(s) in the legacy votes table"
+            " were collapsed; the legacy app should not have been able to write them"
+        )
     if old_votes != new_votes:
-        problems.append(f"votes: {old_votes} resolvable -> {new_votes} migrated")
+        problems.append(f"votes: {old_votes} distinct -> {new_votes} migrated")
 
     # 3. Zero orphans: every vote joins to a song and a voter.
     orphans = one(
@@ -282,9 +328,10 @@ def verify(old_path: Path, new_path: Path) -> list[str]:
     old_tally = {
         (r[0], r[1], r[2]): r[3]
         for r in old.execute(
-            "SELECT e.name, s.artist, s.title, COUNT(v.id) FROM votes v"
+            "SELECT e.name, s.artist, s.title, COUNT(DISTINCT v.user_id) FROM votes v"
             " JOIN events e ON e.id = v.event_id"
             " JOIN songs s ON CAST(v.song AS INTEGER) = s.id"
+            " WHERE trim(COALESCE(v.user_id,'')) <> ''"
             " GROUP BY e.name, s.artist, s.title"
         )
     }
@@ -324,15 +371,28 @@ def main() -> int:
         print(f"  {key:24} {counts[key]}")
 
     problems = verify(args.old, args.new)
+    notes = [p for p in problems if p.startswith("NOTE ")]
+    failures = [p for p in problems if not p.startswith("NOTE ")]
+
     print()
-    if problems:
+    for note in notes:
+        print(f"  note: {note[5:]}")
+    if notes:
+        print()
+    if failures:
         print("GATE G2 FAILED:")
-        for p in problems:
-            print(f"  - {p}")
+        for failure in failures:
+            print(f"  - {failure}")
         return 1
 
     print("GATE G2 PASSED: events, votes and per-song tallies all match.")
     print()
+    if counts.get("ambiguous_names"):
+        print(f"Note: {counts['ambiguous_names']} voter name(s) differ from another")
+        print("only by whitespace or capitalisation. They were kept separate, because")
+        print("merging them would change tallies the band has already seen. Nothing")
+        print("to do unless you want them merged by hand.")
+        print()
     print("Admin accounts were NOT migrated. The legacy hashes are unsalted")
     print("SHA-256 from a database file that sat in a public GitHub repository,")
     print("so they are treated as compromised. Create accounts with:")
