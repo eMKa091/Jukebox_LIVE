@@ -1,0 +1,11 @@
+# Virtualenvs, wherever they get created.
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.DS_Store
+
+# Editor-local config. VS Code writes .vscode/settings.json when it adopts a
+# venv; that is machine state, not project state.
+.vscode/
+.idea/

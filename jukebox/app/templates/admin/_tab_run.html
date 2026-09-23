@@ -1,0 +1,72 @@
+{# The gig itself. One prominent control, never two competing for the thumb. #}
+
+{% if event.state != 'live' %}
+<div class="bigaction">
+  <div class="grow">
+    <h3>Not on air</h3>
+    <p>
+      {% if event.state == 'draft' %}A draft. Check the song list, then mark it ready.
+      {% elif event.state == 'ready' %}Ready. Putting it on air makes the QR code work.
+      {% else %}Closed. The results below are final.{% endif %}
+    </p>
+  </div>
+  {% for action, label, style in transitions %}
+  <form method="post" action="/admin/events/{{ event.id }}/state" style="margin:0">
+    <input type="hidden" name="to" value="{{ action }}">
+    <button class="btn {{ style }}" type="submit">{{ label }}</button>
+  </form>
+  {% endfor %}
+</div>
+{% else %}
+<div class="bigaction hot">
+  <div class="grow">
+    <h3><span class="livedot"><i></i> On air</span></h3>
+    <p>
+      {% if selected.state == 'open' %}Round {{ selected.ordinal }} is taking votes right now.
+      {% else %}Nobody can vote until you open a round.{% endif %}
+    </p>
+  </div>
+  {% if selected.state == 'open' %}
+    <form method="post" action="/admin/rounds/{{ selected.id }}/state" style="margin:0">
+      <input type="hidden" name="to" value="closed"><input type="hidden" name="tab" value="run">
+      <button class="btn danger" type="submit">Stop voting</button>
+    </form>
+  {% else %}
+    <form method="post" action="/admin/rounds/{{ selected.id }}/state" style="margin:0">
+      <input type="hidden" name="to" value="open"><input type="hidden" name="tab" value="run">
+      <button class="btn" type="submit">Start round {{ selected.ordinal }}</button>
+    </form>
+  {% endif %}
+</div>
+
+<div class="row" style="margin-top:12px">
+  {% for action, label, style in transitions %}
+  <form method="post" action="/admin/events/{{ event.id }}/state" style="margin:0">
+    <input type="hidden" name="to" value="{{ action }}">
+    <button class="btn ghost sm" type="submit">{{ label }}</button>
+  </form>
+  {% endfor %}
+</div>
+{% endif %}
+
+{# Settings for the selected round. Frozen while it is open, because a limit
+   that changes mid-round means some ballots were cast under a different rule. #}
+<h2>Round {{ selected.ordinal }} settings</h2>
+<div class="card">
+  <form method="post" action="/admin/rounds/{{ selected.id }}/max-votes" class="row">
+    <label style="flex:1;min-width:200px">
+      <span class="meta" style="display:block;margin-bottom:6px">Votes per person</span>
+      <input type="number" name="max_votes" value="{{ selected.max_votes }}" min="1" max="50"
+             style="max-width:110px" {{ 'disabled' if selected.state == 'open' }}>
+    </label>
+    <button class="btn ghost sm" type="submit" {{ 'disabled' if selected.state == 'open' }}>Save</button>
+  </form>
+  {% if selected.state == 'open' %}
+  <p class="meta" style="margin:10px 0 0">Locked while the round is open — stop voting to change it.</p>
+  {% endif %}
+</div>
+
+<h2>Live results — round {{ selected.ordinal }}</h2>
+<div data-refresh="/admin/events/{{ event.id }}/live?round={{ selected.id }}">
+  {% include "admin/_live.html" %}
+</div>

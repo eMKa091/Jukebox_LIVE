@@ -1,0 +1,21 @@
+<div class="card">
+  <div class="stat" style="margin-bottom:14px">
+    <div><b>{{ stats.voters }}</b><span>voters this round</span></div>
+    <div><b>{{ stats.votes }}</b><span>votes</span></div>
+    <div><b>{{ listeners }}</b><span>screens connected</span></div>
+  </div>
+  <ul class="rank">
+    {% for row in tally[:25] %}
+    <li class="{% if row.rank == 1 and row.votes > 0 %}top{% endif %}">
+      <span class="pos">{{ row.rank }}</span>
+      <span class="who"><b>{{ row.title }}</b><span>{{ row.artist }}</span></span>
+      <span class="n">{{ row.votes }}</span>
+    </li>
+    {% else %}
+    <li><span class="who meta">No songs available in this round.</span></li>
+    {% endfor %}
+  </ul>
+  {% if tally|length > 25 %}
+  <p class="meta" style="margin:10px 0 0">Showing the top 25 of {{ tally|length }}.</p>
+  {% endif %}
+</div>

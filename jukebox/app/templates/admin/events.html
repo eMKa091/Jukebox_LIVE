@@ -1,0 +1,77 @@
+{% extends "admin/base.html" %}
+{% block title %}Events — Jukebox LIVE{% endblock %}
+{% block content %}
+
+<div class="row between" style="margin:24px 0 0">
+  <h1 style="margin:0">Events</h1>
+  <a class="btn" href="/admin/events/new">New event</a>
+</div>
+
+{% if song_count == 0 %}
+<div class="notice warn" style="margin-top:16px">
+  <p>There are no songs yet. <a href="/admin/songs">Import the song list</a> before creating an event.</p>
+</div>
+{% endif %}
+
+{% if live %}
+<div class="onair" style="margin-top:20px">
+  <div class="grow">
+    <span class="livedot"><i></i> On air</span>
+    <h2 style="margin-top:6px">{{ live.event.name }}</h2>
+    <p class="meta" style="margin:0">
+      {% if live_round %}Round {{ live_round.ordinal }} is open{% else %}No round open{% endif %}
+      · {{ live.stats.voters }} voters · {{ live.stats.votes }} votes
+    </p>
+  </div>
+  <a class="btn" href="/admin/events/{{ live.event.id }}">Open console</a>
+</div>
+{% endif %}
+
+<form method="get" action="/admin" class="toolbar" style="margin-top:24px">
+  <input type="search" name="q" value="{{ query }}" placeholder="Search events by name or venue…">
+  {% if query %}<a class="btn ghost sm" href="/admin">Clear</a>{% endif %}
+  <button class="btn ghost sm" type="submit">Search</button>
+</form>
+
+{# --- Coming up: what needs preparing. Soonest first. --------------------- #}
+<section class="group">
+  <header><h2>Coming up</h2><span class="n">{{ upcoming|length }}</span></header>
+  {% for row in upcoming %}
+  <a class="evrow" href="/admin/events/{{ row.event.id }}">
+    <span class="when">{{ row.starts_local }}</span>
+    <span class="what">
+      <b>{{ row.event.name }}</b>
+      <span>{{ row.event.venue or '—' }} · {{ row.rounds|length }} round{{ '' if row.rounds|length == 1 else 's' }}</span>
+    </span>
+    <span class="chip {{ row.event.state }}">{{ row.event.state }}</span>
+  </a>
+  {% else %}
+  <div class="empty">Nothing scheduled. <a href="/admin/events/new">Create an event</a>.</div>
+  {% endfor %}
+</section>
+
+{# --- Done: the archive. Paged, because there are many. ------------------- #}
+<section class="group">
+  <header><h2>Done</h2><span class="n">{{ past_shown }} of {{ past_total }}</span></header>
+  {% for row in past %}
+  <a class="evrow" href="/admin/events/{{ row.event.id }}?tab=data">
+    <span class="when">{{ row.starts_local }}</span>
+    <span class="what">
+      <b>{{ row.event.name }}</b>
+      <span>{{ row.event.venue or '—' }}</span>
+    </span>
+    <span class="tally"><b>{{ row.stats.votes }}</b>votes · {{ row.stats.voters }} people</span>
+  </a>
+  {% else %}
+  <div class="empty">{% if query %}No past events match “{{ query }}”.{% else %}No events have run yet.{% endif %}</div>
+  {% endfor %}
+
+  {% if past_total > past_shown %}
+  <p style="margin-top:12px">
+    <a class="btn ghost sm" href="/admin?limit={{ next_limit }}{% if query %}&amp;q={{ query }}{% endif %}">
+      Show {{ past_total - past_shown }} more</a>
+  </p>
+  {% endif %}
+</section>
+
+{% endblock %}

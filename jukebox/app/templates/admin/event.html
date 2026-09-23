@@ -1,0 +1,60 @@
+{% extends "admin/base.html" %}
+{% block title %}{{ event.name }} — Jukebox LIVE{% endblock %}
+{% block content %}
+
+<div data-stream="/admin/events/{{ event.id }}/stream" hidden></div>
+
+<p class="meta" style="margin:20px 0 0"><a href="/admin">← Events</a></p>
+
+{# ===================================================================== #}
+{#  The console header. Identical on every tab: what is on air, which     #}
+{#  round, how many people. Those three facts are what you look up at a   #}
+{#  gig, so they never move.                                             #}
+{# ===================================================================== #}
+<div class="console">
+  <div class="console-head">
+    <div class="grow">
+      <h1>{{ event.name }}</h1>
+      <p class="meta" style="margin:0">
+        {{ starts_local }}{% if event.venue %} · {{ event.venue }}{% endif %}
+        · <span class="chip {{ event.state }}">{{ event.state }}</span>
+      </p>
+    </div>
+    <div class="console-live">
+      <div><b>{{ event_stats.voters }}</b><span>voters</span></div>
+      <div><b>{{ event_stats.votes }}</b><span>votes</span></div>
+      <div><b>{{ listeners }}</b><span>screens</span></div>
+    </div>
+  </div>
+
+  <nav class="rounds" aria-label="Rounds">
+    {% for r in round_rows %}
+    <a class="rnd {{ 'on' if r.round.id == selected.id }} {{ 'is-open' if r.round.state == 'open' }}"
+       href="/admin/events/{{ event.id }}?tab={{ tab }}&amp;round={{ r.round.id }}">
+      <b>Round {{ r.round.ordinal }}</b>
+      <small>{{ r.round.state }} · {{ r.stats.votes }}</small>
+    </a>
+    {% endfor %}
+    <form method="post" action="/admin/events/{{ event.id }}/rounds" style="margin:0">
+      <button class="rnd" type="submit" style="cursor:pointer;height:100%">
+        <b>+</b><small>add round</small></button>
+    </form>
+  </nav>
+
+  <nav class="tabs" aria-label="Sections">
+    {% for key, label in tabs %}
+    <a class="{{ 'on' if key == tab }}"
+       href="/admin/events/{{ event.id }}?tab={{ key }}&amp;round={{ selected.id }}">{{ label }}</a>
+    {% endfor %}
+  </nav>
+</div>
+
+<div class="panel">
+{% if tab == 'run' %}{% include "admin/_tab_run.html" %}
+{% elif tab == 'songs' %}{% include "admin/_tab_songs.html" %}
+{% elif tab == 'share' %}{% include "admin/_tab_share.html" %}
+{% elif tab == 'data' %}{% include "admin/_tab_data.html" %}
+{% endif %}
+</div>
+
+{% endblock %}

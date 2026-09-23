@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block title %}{{ event.name }}{% endblock %}
+{% block content %}
+
+<div data-stream="/e/{{ event.slug }}/stream" hidden></div>
+
+<h1>{{ heading }}</h1>
+<p class="lead">{{ message }}</p>
+
+{% if tally %}
+<h2>Jak to dopadlo</h2>
+<ul class="rank">
+  {% for row in tally %}
+  <li class="{% if row.rank == 1 %}top{% endif %}">
+    <span class="pos">{{ row.rank }}</span>
+    <span class="who"><b>{{ row.title }}</b><span>{{ row.artist }}</span></span>
+    <span class="n">{{ row.votes }} <small>{{ 'hlas' if row.votes == 1 else ('hlasy' if row.votes < 5 else 'hlasů') }}</small></span>
+  </li>
+  {% endfor %}
+</ul>
+{% endif %}
+
+<p class="meta" style="margin-top:22px">Stránka se sama obnoví, až kapela otevře další kolo.</p>
+
+{% endblock %}

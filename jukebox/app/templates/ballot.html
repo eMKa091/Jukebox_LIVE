@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% block title %}Hlasování — {{ event.name }}{% endblock %}
+{% block topbar_extra %}<span class="livedot"><i></i> Kolo {{ round.ordinal }}</span>{% endblock %}
+{% block content %}
+
+<div data-stream="/e/{{ event.slug }}/stream" hidden></div>
+
+<h1>Vyber až {{ round.max_votes }} písní</h1>
+<p class="lead">Ahoj {{ voter_name }}! Kapela zahraje ty, které dostanou nejvíc hlasů.</p>
+
+<div class="searchbar">
+  <input type="search" id="song-search" placeholder="Hledat písničku nebo interpreta…"
+         autocomplete="off" aria-label="Hledat v seznamu písní">
+</div>
+
+<form method="post" action="/e/{{ event.slug }}/ballot" id="ballot"
+      data-max-votes="{{ round.max_votes }}" data-round-id="{{ round.id }}">
+  <input type="hidden" name="ballot_id" value="">
+  <input type="hidden" name="round_id" value="{{ round.id }}">
+
+  <ul class="songs">
+    {% for song in songs %}
+    <li data-search="{{ (song.title ~ ' ' ~ song.artist)|lower }}">
+      <label class="song">
+        <input type="checkbox" name="song_ids" value="{{ song.id }}">
+        <span class="box"></span>
+        <span>
+          <span class="title">{{ song.title }}</span>
+          <span class="artist">{{ song.artist }}</span>
+        </span>
+      </label>
+    </li>
+    {% endfor %}
+  </ul>
+
+  <div class="tallybar">
+    <div class="inner" style="display:block">
+      <div class="progress"><i id="vote-progress"></i></div>
+      <div style="display:flex;align-items:center;gap:14px">
+        <div class="count" id="vote-count">0 / {{ round.max_votes }}<small>vybráno</small></div>
+        <button class="btn" id="vote-submit" type="submit" disabled>Odeslat hlasy</button>
+      </div>
+    </div>
+  </div>
+</form>
+
+{% endblock %}

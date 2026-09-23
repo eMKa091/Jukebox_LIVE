@@ -1,0 +1,12 @@
+# Local development. No Litestream, no secrets management: one container and a
+# bind-mounted database file you can delete whenever you want a clean slate.
+services:
+  app:
+    build: .
+    ports: ["8080:8080"]
+    environment:
+      JUKEBOX_DEV: "1"
+      JUKEBOX_SECRET_KEY: "dev-only-not-a-real-secret"
+      JUKEBOX_DB: "/data/jukebox.db"
+    volumes:
+      - ./data:/data

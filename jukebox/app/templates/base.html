@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="{{ lang|default('cs') }}">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="dark">
+<meta name="theme-color" content="#0c1110">
+<title>{% block title %}Jukebox LIVE{% endblock %}</title>
+<link rel="stylesheet" href="/static/app.css?v={{ asset_version }}">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>&#127908;</text></svg>">
+</head>
+<body class="{% block bodyclass %}{% endblock %}">
+
+{% block chrome %}
+<header class="topbar">
+  <div class="wrap">
+    <div class="brand">Jukebox<span> LIVE</span></div>
+    <div class="spacer"></div>
+    {% block topbar_extra %}{% endblock %}
+  </div>
+</header>
+{% endblock %}
+
+<main class="wrap{% block wrapclass %}{% endblock %}">
+  {% for kind, message in flashes %}
+    <div class="notice {{ kind }}"><p>{{ message }}</p></div>
+  {% endfor %}
+  {% block content %}{% endblock %}
+</main>
+
+{% block after %}{% endblock %}
+
+<script src="/static/app.js?v={{ asset_version }}" defer></script>
+</body>
+</html>

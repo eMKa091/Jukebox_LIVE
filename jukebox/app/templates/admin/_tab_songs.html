@@ -1,0 +1,77 @@
+{# What this round offers. Filtered and searchable, because the catalogue is
+   several hundred songs and the useful question is always a subset of it. #}
+
+<h2>Round {{ selected.ordinal }} — songs</h2>
+<p class="meta">
+  Exclude what the band will play anyway. Mark as played afterwards, so the
+  song does not come back in the next round.
+</p>
+
+<form method="get" action="/admin/events/{{ event.id }}" class="toolbar">
+  <input type="hidden" name="tab" value="songs">
+  <input type="hidden" name="round" value="{{ selected.id }}">
+  <input type="hidden" name="filter" value="{{ active_filter }}">
+  <input type="search" name="q" value="{{ query }}" placeholder="Search this round…">
+  <button class="btn ghost sm" type="submit">Search</button>
+  {% if query %}
+  <a class="btn ghost sm"
+     href="/admin/events/{{ event.id }}?tab=songs&amp;round={{ selected.id }}&amp;filter={{ active_filter }}">Clear</a>
+  {% endif %}
+</form>
+
+<div class="segments" style="margin-bottom:14px">
+  {% for key, label in filters.items() %}
+  <a class="{{ 'on' if key == active_filter }}"
+     href="/admin/events/{{ event.id }}?tab=songs&amp;round={{ selected.id }}&amp;filter={{ key }}{% if query %}&amp;q={{ query }}{% endif %}">
+    {{ label }} <i>{{ counts[key] }}</i></a>
+  {% endfor %}
+</div>
+
+<form method="post" action="/admin/rounds/{{ selected.id }}/songs">
+  <input type="hidden" name="filter" value="{{ active_filter }}">
+  <input type="hidden" name="q" value="{{ query }}">
+
+  <div class="tablewrap">
+    <table>
+      <thead><tr><th style="width:40px"></th><th>Song</th><th>Status</th><th class="num">Votes</th></tr></thead>
+      <tbody>
+        {% for song in board %}
+        <tr>
+          <td><input type="checkbox" name="song_ids" value="{{ song.id }}"
+                     style="width:20px;height:20px;min-height:0"
+                     aria-label="Select {{ song.title }}"></td>
+          <td><b>{{ song.title }}</b><div class="meta">{{ song.artist }}</div></td>
+          <td><span class="chip {{ song.status }}">{{ song.status }}</span></td>
+          <td class="num">{{ song.votes }}</td>
+        </tr>
+        {% else %}
+        <tr><td colspan="4" class="meta" style="padding:22px;text-align:center">
+          {% if query %}Nothing matches “{{ query }}”.{% else %}Nothing here.{% endif %}
+        </td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  {# Sticky, so the actions stay reachable however long the list is. #}
+  <div class="bulkbar">
+    <span class="hint">Tick songs, then choose:</span>
+    <button class="btn ghost sm" type="submit" name="action" value="exclude">Exclude</button>
+    <button class="btn ghost sm" type="submit" name="action" value="include">Put back</button>
+    <button class="btn sm" type="submit" name="action" value="played">Mark played</button>
+    <button class="btn ghost sm" type="submit" name="action" value="unplayed">Un-mark</button>
+  </div>
+</form>
+
+{% if next_round %}
+<h2>After this round</h2>
+<div class="bigaction">
+  <div class="grow">
+    <h3>Carry the rest into round {{ selected.ordinal + 1 }}</h3>
+    <p>Moves everything still available. Played and excluded songs stay behind.</p>
+  </div>
+  <form method="post" action="/admin/rounds/{{ selected.id }}/carry-forward" style="margin:0">
+    <button class="btn ghost" type="submit">Carry forward</button>
+  </form>
+</div>
+{% endif %}

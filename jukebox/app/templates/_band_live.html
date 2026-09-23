@@ -1,0 +1,30 @@
+{% if round %}
+<h2>Kolo {{ round.ordinal }} — {{ 'hlasování běží' if round.state == 'open' else 'uzavřeno' }}</h2>
+<ul class="rank">
+  {% for row in tally[:20] %}
+  <li class="{% if row.rank == 1 %}top{% endif %}">
+    <span class="pos">{{ row.rank }}</span>
+    <span class="who"><b>{{ row.title }}</b><span>{{ row.artist }}</span></span>
+    <span class="n">{{ row.votes }}</span>
+  </li>
+  {% else %}
+  <li><span class="who">Zatím žádné hlasy.</span></li>
+  {% endfor %}
+</ul>
+{% else %}
+<p class="lead">Zatím neběží žádné kolo.</p>
+{% endif %}
+
+{% if played %}
+<h2>Už zahráno</h2>
+<ul class="rank">
+  {% for row in played %}
+  <li><span class="pos">✓</span><span class="who"><b>{{ row.title }}</b><span>{{ row.artist }}</span></span></li>
+  {% endfor %}
+</ul>
+{% endif %}
+
+{% if notes %}
+<h2>Poznámky</h2>
+<div class="card"><p style="white-space:pre-wrap;color:var(--ink)">{{ notes }}</p></div>
+{% endif %}
