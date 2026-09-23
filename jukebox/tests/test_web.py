@@ -289,3 +289,19 @@ def test_a_czech_error_message_survives_the_flash_cookie(client, open_round, db)
     )
     assert response.status_code == 200
     assert "už hlasoval" in response.text
+
+
+def test_the_cli_does_not_need_a_signing_key(monkeypatch):
+    """Creating an account signs nothing, so it must not demand a web secret.
+
+    The first person to follow the README hit this: `app.cli create-admin`
+    raised "JUKEBOX_SECRET_KEY is not set" before it ever touched the database.
+    """
+    from app.config import load_settings
+
+    monkeypatch.delenv("JUKEBOX_SECRET_KEY", raising=False)
+    monkeypatch.delenv("JUKEBOX_DEV", raising=False)
+
+    assert load_settings(require_secret=False).database_path  # no raise
+    with pytest.raises(RuntimeError, match="JUKEBOX_SECRET_KEY"):
+        load_settings()  # the web app still insists

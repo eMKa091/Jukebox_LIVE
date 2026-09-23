@@ -49,12 +49,19 @@ class Settings:
         return not self.dev_mode
 
 
-def load_settings() -> Settings:
+def load_settings(*, require_secret: bool = True) -> Settings:
+    """Read settings from the environment.
+
+    `require_secret=False` is for commands that never sign anything -- the CLI
+    creates accounts and takes snapshots, and demanding a session-signing key
+    to do that is a papercut that shows up the first time someone follows the
+    README.
+    """
     dev_mode = _bool("JUKEBOX_DEV", False)
 
     secret = os.getenv("JUKEBOX_SECRET_KEY")
     if not secret:
-        if not dev_mode:
+        if require_secret and not dev_mode:
             raise RuntimeError(
                 "JUKEBOX_SECRET_KEY is not set. Generate one with:\n"
                 "    python -c 'import secrets; print(secrets.token_urlsafe(32))'"

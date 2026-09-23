@@ -23,7 +23,8 @@ from .domain.errors import DomainError
 
 
 def _db() -> Database:
-    settings = load_settings()
+    # No route, no session, no signed link: the CLI has no use for a secret.
+    settings = load_settings(require_secret=False)
     db = Database(settings.database_path)
     db.migrate()
     return db

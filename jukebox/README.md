@@ -11,19 +11,39 @@ with it and why this exists are all in [`../docs/`](../docs/).
 
 ## Run it locally
 
+> **Everything below runs from inside `jukebox/`.** `cd jukebox` first — the
+> `app` package lives here, not at the repository root.
+
+First time only:
+
 ```sh
-python3.12 -m venv .venv && ./.venv/bin/pip install -r requirements-dev.txt
-
-export JUKEBOX_DEV=1
-export JUKEBOX_DB="$PWD/data/jukebox.db"
-
-./.venv/bin/python -m app.cli create-admin marek
-./.venv/bin/python -m uvicorn app.main:app --reload --port 8080
+cd jukebox && python3.12 -m venv .venv && ./.venv/bin/pip install -r requirements-dev.txt
 ```
+
+Create an account. No environment variables needed — the CLI signs nothing, so
+it does not ask for a secret key:
+
+```sh
+./.venv/bin/python -m app.cli create-admin marek
+```
+
+Start it:
+
+```sh
+JUKEBOX_DEV=1 ./.venv/bin/python -m uvicorn app.main:app --reload --port 8080
+```
+
+`JUKEBOX_DEV=1` generates a throwaway signing key and relaxes the `Secure`
+cookie flag for plain http on localhost. Without it the app refuses to start
+unless `JUKEBOX_SECRET_KEY` is set — deliberately, so production cannot come up
+with a guessable one.
 
 Then: <http://localhost:8080/admin> to run a gig, <http://localhost:8080> to vote.
 
-Tests — all 94 of them, against a real SQLite database and the real legacy
+The database lands at `jukebox/data/jukebox.db`. Delete that file for a clean
+slate; set `JUKEBOX_DB` to put it somewhere else.
+
+Tests — all 95 of them, against a real SQLite database and the real legacy
 backup file, no mocks:
 
 ```sh
@@ -34,7 +54,7 @@ backup file, no mocks:
 
 ```sh
 ./.venv/bin/python scripts/migrate_legacy.py \
-    ../jukeboxHeroes-v2/backups/backup-votes.db data/jukebox.db
+    ../jukeboxHeroes-v2/backups/backup-votes.db data/jukebox.db --force
 ```
 
 It prints what it moved and then runs gate G2 — event counts, vote counts, zero
