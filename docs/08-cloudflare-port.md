@@ -182,7 +182,9 @@ not be `async`. Whatever it raises rolls the transaction back and is re-raised.
       there. It is NOT correct for the container, so from here on the
       container version is no longer the one to run at a concert.)
 - [x] 3.2 `load_settings(env)` takes a mapping; `os.environ` is only the default.
-- [ ] 3.3 Templates load by whatever U6 found.
+- [x] 3.3 Templates load by whatever U6 found: ordinary file access, so the
+      loader is unchanged. The CSS/JS cache-buster became a hash of the two
+      files; it was the start time, which a Worker fixes at build.
 
 **Step 4 — live updates over WebSockets**
 - [ ] 4.1 `hub.py` becomes an interface with two backends: in-process (tests,

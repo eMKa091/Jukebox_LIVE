@@ -7,6 +7,7 @@ of anything. The cookie is cleared as it is read.
 
 from __future__ import annotations
 
+import hashlib
 import json
 from typing import Any
 from urllib.parse import quote, unquote
@@ -19,6 +20,8 @@ from ..config import APP_DIR
 
 FLASH_COOKIE = "jb_flash"
 
+# Ordinary file access, on the Worker too: its bundle carries the templates as
+# files (docs/08, U6).
 env = Environment(
     loader=FileSystemLoader(APP_DIR / "templates"),
     autoescape=select_autoescape(["html"]),
@@ -26,11 +29,12 @@ env = Environment(
     lstrip_blocks=True,
 )
 
-# Busts the browser cache for CSS and JS on deploy without hashing filenames.
-# Set to the release version in production; the import time is fine locally.
-import time as _time
-
-ASSET_VERSION = str(int(_time.time()))
+# Busts the browser cache for CSS and JS without hashing filenames: it changes
+# exactly when one of them does. Not the start time, which on the Worker is
+# fixed when the bundle is built and says nothing about what changed.
+ASSET_VERSION = hashlib.sha256(
+    b"".join((APP_DIR / "static" / name).read_bytes() for name in ("app.css", "app.js"))
+).hexdigest()[:12]
 
 
 def take_flashes(request: Request) -> list[dict]:
