@@ -14,13 +14,13 @@ on refresh (F6).
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Form, Request
+from fastapi import APIRouter, Form, Request, WebSocket
 from fastapi.responses import HTMLResponse
 
 from ..domain import ballots, events, log, rounds, songs
 from ..domain.errors import DomainError
 from .deps import get_db, get_settings
-from .hub import event_topic, hub, stream_response, votes_topic
+from .hub import Subscription, event_topic, get_hub, serve, subscription_response, votes_topic
 from .render import redirect, render
 from .security import device_token, ensure_device_cookie
 
@@ -174,18 +174,27 @@ async def cast_ballot(
 
     # Tell the band's display and the admin console, not the other attendees:
     # a vote count changing under someone's ballot is noise.
-    hub.publish(votes_topic(event.id), kind="votes")
+    get_hub(request).publish(votes_topic(event.id), kind="votes")
     return redirect(f"/e/{slug}")
 
 
-@router.get("/e/{slug}/stream")
-async def stream(slug: str, request: Request):
+def _phone_subscription(conn, slug: str) -> Subscription:
     """Live updates for attendees.
 
     Only changes to the event itself arrive here, each asking for a reload.
     Individual votes do not, so a phone mid-ballot is never yanked out from
     under its owner.
     """
-    conn = get_db(request).read()
-    event = events.by_slug(conn, slug)
-    return stream_response(event_topic(event.id), ready={"stamp": log.stamp(conn, event.id)})
+    db = get_db(conn).read()
+    event = events.by_slug(db, slug)
+    return Subscription((event_topic(event.id),), {"stamp": log.stamp(db, event.id)})
+
+
+@router.websocket("/e/{slug}/stream")
+async def stream_socket(ws: WebSocket, slug: str):
+    await serve(ws, lambda: _phone_subscription(ws, slug))
+
+
+@router.get("/e/{slug}/stream")
+async def stream(slug: str, request: Request):
+    return subscription_response(request, _phone_subscription(request, slug))

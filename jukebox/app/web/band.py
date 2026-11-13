@@ -7,13 +7,13 @@ the way `?admin=Band` could be (F3).
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, Request, WebSocket
 from fastapi.responses import HTMLResponse
 
 from ..domain import ballots, events, log, rounds
 from ..domain.errors import NotPermitted
 from .deps import get_db, get_tokens
-from .hub import event_topic, stream_response, votes_topic
+from .hub import Subscription, event_topic, serve, subscription_response, votes_topic
 from .render import fragment, render
 
 router = APIRouter(prefix="/band")
@@ -67,8 +67,18 @@ async def live_fragment(token: str, request: Request):
     return fragment("_band_live.html", **_live_context(request, event))
 
 
+def _band_subscription(conn, token: str) -> Subscription:
+    """The band hears round changes and every vote, to redraw the tally."""
+    event = _resolve(conn, token)
+    stamp = log.stamp(get_db(conn).read(), event.id)
+    return Subscription((event_topic(event.id), votes_topic(event.id)), {"stamp": stamp})
+
+
+@router.websocket("/{token}/stream")
+async def stream_socket(ws: WebSocket, token: str):
+    await serve(ws, lambda: _band_subscription(ws, token))
+
+
 @router.get("/{token}/stream")
 async def stream(token: str, request: Request):
-    event = _resolve(request, token)
-    stamp = log.stamp(get_db(request).read(), event.id)
-    return stream_response(event_topic(event.id), votes_topic(event.id), ready={"stamp": stamp})
+    return subscription_response(request, _band_subscription(request, token))

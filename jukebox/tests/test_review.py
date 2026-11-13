@@ -18,7 +18,7 @@ import pytest
 from app.config import load_settings
 from app.domain import ballots, events, log, rounds, songs
 from app.domain.errors import Invalid
-from app.web.hub import QUEUE_SIZE, Hub, hub, votes_topic
+from app.web.hub import QUEUE_SIZE, LocalHub, votes_topic
 from tests.conftest import ADMIN_PASSWORD, ADMIN_USER
 
 JUKEBOX = Path(__file__).resolve().parents[1]
@@ -47,7 +47,7 @@ def test_r1_a_page_carries_the_stamp_and_a_round_change_moves_it(client, open_ro
 
 def test_r1_the_first_frame_of_a_stream_names_the_stamp():
     async def first_frame():
-        stream = Hub().stream("event:1", ready={"stamp": 42})
+        stream = LocalHub().stream("event:1", ready={"stamp": 42})
         return await stream.__anext__()
 
     assert '"stamp": 42' in asyncio.run(first_frame())
@@ -63,7 +63,7 @@ def test_r1_the_client_reloads_when_the_stamps_differ():
 def test_a_dropped_subscriber_is_disconnected_not_left_deaf():
     """A stream whose queue overflowed used to stay open and hear nothing more."""
     async def run():
-        local = Hub()
+        local = LocalHub()
         stream = local.stream("t")
         await stream.__anext__()                    # ready
         for n in range(QUEUE_SIZE + 5):
@@ -91,7 +91,7 @@ def test_every_handler_is_async_because_the_worker_has_no_threads(app):
 def test_r2_a_vote_is_announced_to_the_band_not_to_the_phones(client, open_round, db, monkeypatch):
     event = events.get(db.read(), open_round.event_id)
     told: list[str] = []
-    monkeypatch.setattr(hub, "publish", lambda topic, **payload: told.append(topic))
+    monkeypatch.setattr(client.app.state.hub, "publish", lambda topic, **payload: told.append(topic))
 
     client.post(f"/e/{event.slug}/join", data={"display_name": "Eva"})
     pick = rounds.votable_songs(db.read(), open_round.id)[0]["id"]

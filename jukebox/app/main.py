@@ -20,13 +20,16 @@ from .db import Database, applied_migrations
 from .domain.errors import DomainError, NotPermitted
 from .domain.identity import LoginThrottle
 from .web import admin, band, public
+from .web.hub import Hub, LocalHub
 from .web.render import redirect
 from .web.security import Tokens
 
 log = logging.getLogger("jukebox")
 
 
-def create_app(settings: Settings | None = None) -> FastAPI:
+def create_app(settings: Settings | None = None, *, hub: Hub | None = None) -> FastAPI:
+    """The app. `hub` is how live updates go out: in this process unless the
+    Durable Object passes its own sockets (web/hub.py)."""
     settings = settings or load_settings()
 
     @asynccontextmanager
@@ -46,6 +49,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
     app.state.settings = settings
     app.state.db = Database(settings.database_path)
+    app.state.hub = hub or LocalHub()
     app.state.tokens = Tokens(settings.secret_key, session_max_age=settings.session_max_age)
     app.state.throttle = LoginThrottle(
         max_attempts=settings.login_max_attempts,

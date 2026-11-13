@@ -112,14 +112,15 @@
      fetched again. Without that check a phone locked between rounds went on
      promising "this page will refresh itself" for the rest of the night. */
   function initStream(el) {
-    var url = el.dataset.stream;
+    var url = (location.protocol === "https:" ? "wss://" : "ws://") + location.host + el.dataset.stream;
     var stamp = el.dataset.stamp;
     var jitter = parseInt(el.dataset.jitter, 10) || 0;
-    var source;
+    var socket;
     var retry = 1000;
     var connected = 0;        // how many times the stream has come up
     var reloading = false;
     var hiddenAt = 0;
+    var heard = 0;            // when anything last arrived, pongs included
 
     // Five hundred phones are told to reload in the same instant. Each waits
     // a random moment first, so the server sees a few seconds of traffic
@@ -127,46 +128,60 @@
     function reload() {
       if (reloading) return;
       reloading = true;
-      if (source) source.close();
+      if (socket) socket.close();
       setTimeout(function () { window.location.reload(); }, Math.random() * jitter);
     }
 
+    function onReady(data) {
+      retry = 1000;
+      connected += 1;
+      if (stamp !== undefined && data.stamp !== undefined && String(data.stamp) !== stamp) {
+        reload();
+        return;
+      }
+      // Same event state, but votes may have landed while we were away.
+      if (connected > 1) refreshAll();
+    }
+
+    function onUpdate(data) {
+      // A change to what the round *is* reloads the page, because the whole
+      // shape of it differs between open, closed and not-yet-started.
+      if (data.reload) {
+        reload();
+        return;
+      }
+      // Anything else (votes arriving from other phones) just re-renders
+      // the live fragments in place.
+      refreshAll();
+    }
+
     function connect() {
-      source = new EventSource(url);
+      var ws = new WebSocket(url);
+      socket = ws;
+      heard = Date.now();
 
-      source.addEventListener("ready", function (ev) {
-        retry = 1000;
-        connected += 1;
+      ws.onmessage = function (ev) {
+        heard = Date.now();
+        if (ev.data === "pong") return;
         var data = {};
-        try { data = JSON.parse(ev.data); } catch (e) {}
-        if (stamp !== undefined && data.stamp !== undefined && String(data.stamp) !== stamp) {
-          reload();
-          return;
-        }
-        // Same event state, but votes may have landed while we were away.
-        if (connected > 1) refreshAll();
-      });
+        try { data = JSON.parse(ev.data); } catch (e) { return; }
+        if (data.type === "ready") onReady(data);
+        else if (data.type === "update") onUpdate(data);
+      };
 
-      source.addEventListener("update", function (ev) {
-        var data = {};
-        try { data = JSON.parse(ev.data); } catch (e) {}
-        // A change to what the round *is* reloads the page, because the whole
-        // shape of it differs between open, closed and not-yet-started.
-        if (data.reload) {
-          reload();
-          return;
-        }
-        // Anything else (votes arriving from other phones) just re-renders
-        // the live fragments in place.
-        refreshAll();
-      });
-
-      source.addEventListener("error", function () {
-        source.close();
-        if (reloading) return;
+      ws.onclose = function () {
+        // Replaced on purpose by reconnect(), or the page is leaving.
+        if (socket !== ws || reloading) return;
         retry = Math.min(retry * 2, 15000);
         setTimeout(connect, retry);
-      });
+      };
+    }
+
+    function reconnect() {
+      var old = socket;
+      socket = null;
+      if (old) old.close();
+      connect();
     }
 
     // A phone coming back from the lock screen may hold a connection that is
@@ -174,9 +189,17 @@
     document.addEventListener("visibilitychange", function () {
       if (document.hidden) { hiddenAt = Date.now(); return; }
       if (reloading || !hiddenAt || Date.now() - hiddenAt < 5000) return;
-      source.close();
-      connect();
+      reconnect();
     });
+
+    // Networks drop connections that go quiet, and a dead one can look open
+    // for minutes. A ping every 25 seconds keeps it alive; nothing heard for
+    // a minute means it is gone.
+    setInterval(function () {
+      if (reloading || !socket) return;
+      if (Date.now() - heard > 60000) { reconnect(); return; }
+      if (socket.readyState === WebSocket.OPEN) socket.send("ping");
+    }, 25000);
 
     connect();
   }
@@ -192,7 +215,7 @@
     }
 
     var streamEl = document.querySelector("[data-stream]");
-    if (streamEl && window.EventSource) initStream(streamEl);
+    if (streamEl && window.WebSocket) initStream(streamEl);
   });
 
   /* --------------------------------------------------------- confirm ---- */

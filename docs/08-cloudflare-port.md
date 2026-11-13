@@ -187,13 +187,19 @@ not be `async`. Whatever it raises rolls the transaction back and is re-raised.
       files; it was the start time, which a Worker fixes at build.
 
 **Step 4 — live updates over WebSockets**
-- [ ] 4.1 `hub.py` becomes an interface with two backends: in-process (tests,
+- [x] 4.1 `hub.py` becomes an interface with two backends: in-process (tests,
       local) and the object's sockets, tagged `event:<id>` for every screen
       and `votes:<id>` for the band display and the console.
-- [ ] 4.2 `app.js`: `WebSocket` instead of `EventSource`. The first message is
+- [x] 4.2 `app.js`: `WebSocket` instead of `EventSource`. The first message is
       still `ready` with the stamp; the stamp check, the reload spread and the
       wake-up reconnect stay exactly as they are.
-- [ ] 4.3 The R1 test in a real browser again (docs/07, "What was done").
+- [x] 4.3 The R1 test in a real browser again (docs/07, "What was done").
+      Passed 2026-11-13 against uvicorn, in Chrome for Testing at phone size:
+      the socket's first message is `ready`; the round closed in the
+      database with no message sent, the phone hidden 6 s and shown again,
+      it reloaded onto the standings; the console reopened the round and
+      the phone reloaded onto the ballot 2.9 s later (the 0-3 s spread).
+      To run again on the Worker in 5.3.
 
 **Step 5 — the Durable Object**
 - [ ] 5.1 `app/db_durable.py`: the same interface over `ctx.storage.sql`. Rows

@@ -17,13 +17,13 @@ from zoneinfo import ZoneInfo
 
 import qrcode
 import qrcode.image.svg
-from fastapi import APIRouter, Form, Request, UploadFile
+from fastapi import APIRouter, Form, Request, UploadFile, WebSocket
 from fastapi.responses import HTMLResponse, Response
 
 from ..domain import ballots, events, identity, log, rounds, songs
 from ..domain.errors import DomainError, NotPermitted
 from .deps import get_db, get_settings, get_throttle, get_tokens
-from .hub import event_topic, hub, stream_response, votes_topic
+from .hub import Subscription, event_topic, get_hub, serve, subscription_response, votes_topic
 from .render import fragment, redirect, render
 from .security import SESSION_COOKIE, clear_session_cookie, client_address, set_session_cookie
 
@@ -282,7 +282,7 @@ def _console(request: Request, event_id: int, round_id: int | None):
             for r in all_rounds
         ],
         "event_stats": ballots.event_stats(conn, event_id),
-        "listeners": hub.subscriber_count(event_topic(event_id)),
+        "listeners": get_hub(request).subscriber_count(event_topic(event_id)),
         # Surfaced on the tab itself, so a song added to the master list
         # mid-gig is visible without opening the tab to look for it.
         "missing_count": len(rounds.songs_not_in_round(conn, selected.id)),
@@ -385,7 +385,7 @@ async def event_state(event_id: int, request: Request, to: str = Form(...)):
     except DomainError as exc:
         return redirect(f"/admin/events/{event_id}", flash=("bad", str(exc)))
     # Everyone holding this event's page needs the new shape of it.
-    hub.publish(event_topic(event_id), kind="event", reload=True)
+    get_hub(request).publish(event_topic(event_id), kind="event", reload=True)
     return redirect(f"/admin/events/{event_id}")
 
 
@@ -406,7 +406,7 @@ async def add_round(event_id: int, request: Request):
 async def save_notes(event_id: int, request: Request, body: str = Form("")):
     user = current_admin(request)
     events.update_band_notes(get_db(request), event_id=event_id, body=body, actor=user)
-    hub.publish(event_topic(event_id), kind="notes")
+    get_hub(request).publish(event_topic(event_id), kind="notes")
     return redirect(f"/admin/events/{event_id}?tab=share", flash=("", "Notes saved."))
 
 
@@ -433,7 +433,7 @@ async def round_state(round_id: int, request: Request, to: str = Form(...), tab:
         return redirect(back, flash=("bad", str(exc)))
     # Opening or closing a round changes what every attendee's page should be,
     # so this one does force a reload on their side.
-    hub.publish(event_topic(rnd.event_id), kind="round", reload=True)
+    get_hub(request).publish(event_topic(rnd.event_id), kind="round", reload=True)
     return redirect(back)
 
 
@@ -492,7 +492,7 @@ async def round_songs(
             added = rounds.add_songs(db, round_id=round_id, song_ids=missing, actor=user)
         except DomainError as exc:
             return redirect(back, flash=("bad", str(exc)))
-        hub.publish(event_topic(rnd.event_id), kind="songs", reload=True)
+        get_hub(request).publish(event_topic(rnd.event_id), kind="songs", reload=True)
         return redirect(back, flash=("", f"{added} song(s) added to round {rnd.ordinal}."))
 
     if not song_ids:
@@ -521,7 +521,7 @@ async def round_songs(
     except DomainError as exc:
         return redirect(back, flash=("bad", str(exc)))
 
-    hub.publish(event_topic(rnd.event_id), kind="songs", reload=True)
+    get_hub(request).publish(event_topic(rnd.event_id), kind="songs", reload=True)
     return redirect(back, flash=("", message))
 
 
@@ -723,8 +723,17 @@ async def event_qr(event_id: int, request: Request):
     return Response(buffer.getvalue(), media_type="image/svg+xml")
 
 
+def _console_subscription(conn, event_id: int) -> Subscription:
+    current_admin(conn)
+    stamp = log.stamp(get_db(conn).read(), event_id)
+    return Subscription((event_topic(event_id), votes_topic(event_id)), {"stamp": stamp})
+
+
+@router.websocket("/events/{event_id}/stream")
+async def admin_stream_socket(ws: WebSocket, event_id: int):
+    await serve(ws, lambda: _console_subscription(ws, event_id))
+
+
 @router.get("/events/{event_id}/stream")
 async def admin_stream(event_id: int, request: Request):
-    current_admin(request)
-    stamp = log.stamp(get_db(request).read(), event_id)
-    return stream_response(event_topic(event_id), votes_topic(event_id), ready={"stamp": stamp})
+    return subscription_response(request, _console_subscription(request, event_id))

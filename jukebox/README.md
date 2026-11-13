@@ -128,7 +128,7 @@ app/
     public.py          the attendee journey
     band.py            the stage display, on a signed link
     admin.py           the console
-    hub.py             SSE fan-out
+    hub.py             live updates over WebSockets
     security.py        cookies, sessions, band tokens
     render.py          templates and flash messages
   templates/  static/  server-rendered HTML, one CSS file, ~160 lines of JS
@@ -138,10 +138,16 @@ tests/
 
 ### Live updates
 
-Server-Sent Events, not WebSockets: one-way server-to-client is the shape of
-the problem, and plain HTTP survives the captive portals and mobile proxies
-that break WebSocket upgrades. `EventSource` reconnects by itself, which is the
-normal case on venue wifi.
+WebSockets, since step 4 of the Cloudflare port
+([`../docs/08-cloudflare-port.md`](../docs/08-cloudflare-port.md)). It was
+Server-Sent Events: one-way is the shape of the problem, and plain HTTP gets
+through proxies that break an upgrade. On a Durable Object, though, an open
+event stream is a request that never ends, so the object could never sleep and
+would be billed for every phone in the room for the whole evening; a
+WebSocket accepted with the Hibernation API costs nothing while it is quiet.
+Over `wss://` a proxy sees only encrypted bytes, which is most of what made
+upgrades fragile. `app.js` reconnects with a backoff, pings every 25 seconds,
+and starts again when nothing has been heard for a minute.
 
 A round opening or closing reloads the attendee's page, because its whole shape
 differs between states. Votes arriving from other phones do not — they only
