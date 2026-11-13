@@ -111,7 +111,7 @@ def migrate(old_path: Path, new_path: Path, *, force: bool) -> dict:
     round_map: dict[int, int] = {}     # legacy event id  -> new round id
     event_map: dict[int, int] = {}
 
-    with db.write() as conn:
+    def copy(conn: sqlite3.Connection) -> None:
         # -- songs -------------------------------------------------------
         for row in old.execute("SELECT id, title, artist FROM songs ORDER BY id"):
             title = (row["title"] or "").strip()
@@ -265,6 +265,8 @@ def migrate(old_path: Path, new_path: Path, *, force: bool) -> dict:
             (utcnow(), f'{{"source": "{old_path.name}"}}'),
         )
 
+    # One transaction: a migration that fails halfway leaves nothing behind.
+    db.transact(copy)
     old.close()
     db.close()
     return dict(counts)

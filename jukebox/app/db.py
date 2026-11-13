@@ -15,8 +15,7 @@ from __future__ import annotations
 
 import sqlite3
 import threading
-from collections.abc import Callable, Iterator
-from contextlib import contextmanager
+from collections.abc import Callable
 from typing import TypeVar
 from datetime import datetime, timezone
 from pathlib import Path
@@ -73,9 +72,15 @@ class Database:
             self._local.conn = conn
         return conn
 
-    @contextmanager
-    def write(self) -> Iterator[sqlite3.Connection]:
-        """An explicit transaction. Commits on success, rolls back on any error.
+    def transact(self, fn: Callable[[sqlite3.Connection], T]) -> T:
+        """Run `fn(conn)` inside one transaction and return what it returns.
+
+        Whatever `fn` raises rolls the transaction back and is raised again.
+        `fn` must not be async: the whole of it is one uninterrupted unit.
+
+        A callback rather than a `with` block because the Durable Object's
+        SQLite only offers transactions as a callback, and the rules should
+        read the same on both (docs/08-cloudflare-port.md, step 2).
 
         IMMEDIATE takes the write lock up front rather than on first write, so
         two concurrent writers fail fast against busy_timeout instead of
@@ -84,25 +89,12 @@ class Database:
         conn = self.connect()
         conn.execute("BEGIN IMMEDIATE")
         try:
-            yield conn
+            result = fn(conn)
         except BaseException:
             conn.execute("ROLLBACK")
             raise
         conn.execute("COMMIT")
-
-    def transact(self, fn: Callable[[sqlite3.Connection], T]) -> T:
-        """Run `fn(conn)` inside one transaction and return what it returns.
-
-        Whatever `fn` raises rolls the transaction back and is raised again.
-        `fn` must not be async: the whole of it is one uninterrupted unit.
-
-        This is the form the rules use (docs/08-cloudflare-port.md, step 2).
-        A callback rather than a `with` block because the Durable Object's
-        SQLite only offers transactions as a callback, and the rules should
-        read the same on both.
-        """
-        with self.write() as conn:
-            return fn(conn)
+        return result
 
     def read(self) -> sqlite3.Connection:
         return self.connect()
