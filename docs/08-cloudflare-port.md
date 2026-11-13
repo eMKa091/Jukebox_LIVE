@@ -268,14 +268,36 @@ not be `async`. Whatever it raises rolls the transaction back and is re-raised.
       drill" and the same songs, events and votes as A.
 
 **Step 8 — 500 phones on the real thing**
-- [ ] 8.1 `tools/loadtest/phones.py` taught to speak WebSocket. (Today it speaks
+- [x] 8.1 `tools/loadtest/phones.py` taught to speak WebSocket. (Today it speaks
       Server-Sent Events and runs against the container app:
       `jukebox/tools/loadtest/run.sh "$PWD/jukebox" label 500 15 30` seeds a
       scratch database, starts the app on port 8766, runs 500 phones arriving
       over 15 s and voting over 30 s, and prints the timings.)
+      Done, plus an optional eighth argument, the reload spread (app.js uses
+      3 s), and a failed reload is retried as a person would. For the
+      Worker: `tools/loadtest/run_worker.sh <app dir> <url> <setup token>
+      <label> 500 15 30 3` (an empty object; it seeds a file and pushes it in).
+      **Run on the local Worker, 2026-11-13, one Mac:** 100 phones clean.
+      500 phones with the 3 s spread: every vote stored (2,500 of 2,500),
+      every phone reached the standings and then the new ballot, but 1,031
+      reloads failed first (wrangler's local proxy: "Network connection
+      lost") and the reload p95 was 7-8 s. **Not a pass.** Without load a
+      Python request costs the object about 5 ms locally, the standings page
+      13 ms, a static file 2 ms; a round change asks one object for 500 pages
+      and 500 socket handshakes inside 3 s, which is more than 3 s of its
+      time at those costs. So the local failure is the arithmetic, not only
+      the proxy. On Cloudflare the entry Worker's share runs in parallel, so
+      8.2 can still pass; plan for it not to.
 - [ ] 8.2 Run against the deployed Worker. Pass: every vote stored, no errors,
       the ballot within 2 s for 95 % of phones after a round opens. Numbers in
       the log. If it fails on speed: the fallback design in section 2.
+      Against a copy of its own, never the band's: `uvx --from
+      workers-py@1.17.9 pywrangler deploy --name jukebox-live-loadtest`, its
+      setup token set as a secret on that name. If it fails, two cuts, the
+      smaller first. (a) Render the ballot's song list once per round state
+      and reuse it: careful, retiring a song does not move the event's
+      stamp, so key the cache on the round's song rows, not on the stamp.
+      (b) The fallback: pages rendered in the entry Worker.
 
 **Step 9 — cutover and cleanup**
 - [ ] 9.1 DNS at Cloudflare (nameservers changed at Webglobe), both Workers on

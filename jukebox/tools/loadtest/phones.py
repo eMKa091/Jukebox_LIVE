@@ -1,10 +1,15 @@
 """N phones across several processes, plus one band display and one admin console.
 
 Phases: everyone scans the QR (ARRIVE s), joins, loads the ballot, holds the live
-stream, votes inside WINDOW s. Then the admin closes round 1 (every phone reloads
+WebSocket, votes inside WINDOW s. Then the admin closes round 1 (every phone reloads
 onto the standings), carries the songs forward and opens round 2 (every phone
 reloads onto a fresh ballot). Transport errors are retried like a browser on
 Linux would see them (a dropped SYN is a delay there, a refusal on macOS).
+
+The optional eighth argument is the reload spread in seconds: each phone waits
+a random moment up to it before reloading, as app.js does (data-jitter, 3 s).
+Without it every phone reloads in the same instant, the harder case. A reload
+that fails is tried again, as a person would, up to five times.
 """
 import asyncio
 import json
@@ -16,10 +21,14 @@ import sys
 import time
 
 import httpx
+import websockets
 
 BASE, SLUG, ROUND_ID, EVENT_ID = sys.argv[1], sys.argv[2], int(sys.argv[3]), int(sys.argv[4])
 N, ARRIVE, WINDOW, PROCS = int(sys.argv[5]), float(sys.argv[6]), float(sys.argv[7]), 5
+JITTER = float(sys.argv[8]) if len(sys.argv) > 8 else 0.0
 KINDS = ["page", "join", "ballot_page", "vote", "reload_closed", "reload_open"]
+WS_BASE = BASE.replace("https://", "wss://").replace("http://", "ws://")
+SOCKET_ERRORS = (OSError, asyncio.TimeoutError, websockets.WebSocketException)
 
 
 async def phones(proc, count, t_start, out):
@@ -67,21 +76,27 @@ async def phones(proc, count, t_start, out):
             stage = "closed"
             while stage:
                 try:
-                    async with c.stream("GET", f"/e/{SLUG}/stream", timeout=None) as s:
-                        async for line in s.aiter_lines():
-                            if not line.startswith("data:"):
-                                continue
+                    async with websockets.connect(f"{WS_BASE}/e/{SLUG}/stream", open_timeout=60) as s:
+                        async for message in s:
                             frames += 1
-                            if '"reload": true' in line:
+                            if '"reload": true' in message:
                                 break
                         else:
-                            continue
-                except (httpx.ConnectError, httpx.ReadError, httpx.RemoteProtocolError):
+                            continue  # closed without a reload: connect again
+                except SOCKET_ERRORS:
                     retries += 1
                     await asyncio.sleep(1)
                     continue
-                r = await req("reload_" + stage, c, "GET", f"/e/{SLUG}")
-                text = r.text if r is not None else ""
+                await asyncio.sleep(random.uniform(0, JITTER))
+                for _attempt in range(5):
+                    r = await req("reload_" + stage, c, "GET", f"/e/{SLUG}")
+                    if r is not None and r.status_code < 500:
+                        break
+                    await asyncio.sleep(1)
+                else:
+                    errors.append(("gave up reloading", stage))
+                    break
+                text = r.text
                 if stage == "closed" and "Kolo právě skončilo" in text:
                     done["closed"] += 1
                     stage = "open"
@@ -108,16 +123,19 @@ async def staff(t_start, stats):
         share = await c.get(f"/admin/events/{EVENT_ID}?tab=share")
         band = re.search(r"/band/([A-Za-z0-9_.\-]+)", share.text).group(1)
 
+        # The console's socket is signed in like its page: the session cookie.
+        cookie = {"Cookie": "; ".join(f"{k}={v}" for k, v in c.cookies.items())}
+
         async def screen(stream_url, fragment_url, key):
             while True:
                 try:
-                    async with c.stream("GET", stream_url, timeout=None) as s:
-                        async for line in s.aiter_lines():
-                            if line.startswith("data:"):
-                                t = time.perf_counter()
-                                await c.get(fragment_url)
-                                stats[key].append(time.perf_counter() - t)
-                except (httpx.ReadError, httpx.RemoteProtocolError):
+                    async with websockets.connect(f"{WS_BASE}{stream_url}", open_timeout=60,
+                                                  additional_headers=cookie) as s:
+                        async for _message in s:
+                            t = time.perf_counter()
+                            await c.get(fragment_url)
+                            stats[key].append(time.perf_counter() - t)
+                except SOCKET_ERRORS:
                     await asyncio.sleep(0.5)
 
         tasks = [
@@ -170,7 +188,7 @@ def main():
     print(f"voted {tot('voted')}/{N}, reloaded after close {tot('closed')}/{N}, after open {tot('open')}/{N}")
     print(f"errors {sum(r['n_errors'] for r in results)} {[e for r in results for e in r['errors']][:6]}"
           f"  transport retries {sum(r['retries'] for r in results)}")
-    print(f"stream frames delivered to phones: {sum(r['frames'] for r in results)}")
+    print(f"socket messages delivered to phones: {sum(r['frames'] for r in results)}")
 
 
 if __name__ == "__main__":
