@@ -199,7 +199,8 @@ not be `async`. Whatever it raises rolls the transaction back and is re-raised.
       database with no message sent, the phone hidden 6 s and shown again,
       it reloaded onto the standings; the console reopened the round and
       the phone reloaded onto the ballot 2.9 s later (the 0-3 s spread).
-      To run again on the Worker in 5.3.
+      Passed again on the local Worker in 5.3 (`tools/r1_browser.py`, which
+      drops the socket's messages instead of writing to a database file).
 
 **Step 5 — the Durable Object**
 - [x] 5.1 `app/db_durable.py`: the same interface over `ctx.storage.sql`. Rows
@@ -220,8 +221,12 @@ not be `async`. Whatever it raises rolls the transaction back and is re-raised.
       The object's region is the var `JUKEBOX_JURISDICTION`: `eu` on
       Cloudflare, empty locally (the local runtime does not implement it).
       Runs locally: `/readyz` answers `ready schema=v1` from the object.
-- [ ] 5.3 A smoke script against the local dev server: create an event, go
+- [x] 5.3 A smoke script against the local dev server: create an event, go
       live, join, vote, see the count on the band display.
+      `tools/smoke.py <url> [setup token]`, done after step 6 because the
+      object's first account comes from 6.2. Passed 2026-11-13 on the local
+      Worker from an empty object (setup, 16 steps, the vote on the band's
+      socket in 12 ms), and on uvicorn. R1 passed in a browser on the Worker.
 
 **Step 6 — accounts**
 - [x] 6.1 Password hashing by U7: argon2, **at 19 MiB instead of 64.**

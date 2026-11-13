@@ -1,6 +1,9 @@
 """R1 in a real browser, against any running copy (docs/08 steps 4.3 and 5.3).
 
-    python r1_any.py <base url> <admin user> <admin password>
+    python tools/r1_browser.py <base url> <admin user> <admin password>
+
+Needs Playwright (`pip install playwright`, `playwright install chromium`),
+which the app itself does not; CHROME=<path> uses a Chromium already there.
 
 Makes its own event (two songs, one round), then:
 1. a phone joins and sits on the ballot; its socket says `ready`;
