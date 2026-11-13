@@ -123,8 +123,8 @@ deleted it; `git show <that commit>^:jukebox/spike/src/entry.py` prints it.
 ## 5. Checklist
 
 Rules for every step: small commits on this branch; `cd jukebox &&
-./.venv/bin/python -m pytest -q` passes before each commit (170 tests after
-step 2.2a); never push without Filip saying so; if a step turns out wrong, say so
+./.venv/bin/python -m pytest -q` passes before each commit (373 tests after
+step 8.1); never push without Filip saying so; if a step turns out wrong, say so
 in the log rather than quietly doing something else.
 
 **Step 0 — record the decision**
@@ -243,6 +243,31 @@ not be `async`. Whatever it raises rolls the transaction back and is re-raised.
 - [x] 6.3 The sign-in throttle's counts in a table (the object's memory is
       emptied whenever it sleeps). `login_failures`, migration 002.
 
+**The first deploy (Filip; it needs your Cloudflare login).** Steps 7.2, 8.2
+and 9 start here. Nothing below touches DNS, the Streamlit app or the
+container. Every command runs in `jukebox/worker/`; `pw` stands for
+`uvx --from workers-py@1.17.9 pywrangler`. The bundle is 2.9 MB compressed,
+inside the 10 MB a paid account allows (checked with a dry run).
+
+1. `pw login`, and the Workers Paid plan on the account (section 6).
+2. `pw deploy`. It prints the address, `https://jukebox-live.<you>.workers.dev`.
+   Every page is an error until step 3: the app will not start without its key.
+3. `pw secret put JUKEBOX_SECRET_KEY`, pasting the output of
+   `python3 -c 'import secrets; print(secrets.token_urlsafe(32))'`; then
+   `pw secret put JUKEBOX_SETUP_TOKEN` the same way, with a second one.
+4. `<address>/readyz` answers `ready schema=v2`. Open `<address>/admin/setup`,
+   make your account with the setup token. The page is then gone for good.
+5. The real data (7.1): the four commands at the top of
+   `jukebox/scripts/transfer.py`, with `<address>` for the URL. G2 must pass.
+6. The restore drill (7.2) on this copy, as written there.
+7. The load test (8.2) on a copy of its own: `pw deploy --name
+   jukebox-live-loadtest`, `pw secret put JUKEBOX_SECRET_KEY --name
+   jukebox-live-loadtest` and the same for the setup token, then from
+   `jukebox/`: `tools/loadtest/run_worker.sh "$PWD" <its address> <its
+   setup token> cf 500 15 30 3`. `tools/smoke.py` and `tools/r1_browser.py`
+   belong on that copy too: they leave test songs and events behind.
+   `pw delete --name jukebox-live-loadtest` afterwards.
+
 **Step 7 — the data**
 - [x] 7.1 Import: `migrate_legacy.py` output into the object through an
       admin-only endpoint, in one transaction, gate G2 run on the result.
@@ -333,12 +358,24 @@ loading the ballot several times could reach the rows-read cap on the night.
 
 Newest first. One line per session: date, who, what was done, what is next.
 
-- 2026-11-13, Claude (Opus 5.5), second session: on `main` at Filip's request.
-  Step 1: uv installed, U1-U8 answered yes on the local runtime, U9 timed
-  locally only (close to the need; 8.2 decides). Not foreseen: no threads at
-  all (3.1 required), `PRAGMA user_version` refused (2.5 required), no
-  `pbkdf2_hmac` (argon2 works, so no fallback needed). Steps 2, 3 and 4 done,
-  181 tests pass, R1 passes in a browser. **Next: 5.1.**
+- 2026-11-13, Claude (Opus 5.5), second session, on `main` at Filip's
+  request (main fast-forwarded to `feat/cloudflare-workers`; nothing pushed).
+  Done: steps 1 to 6, 7.1 and 8.1, each committed and ticked above; 373
+  tests pass, every database test on both backends. The whole app runs on
+  the local Workers runtime: smoke run, R1 in a browser, the legacy import
+  with G2 on the copy pulled back out. Not foreseen, and handled: no
+  threads, no `PRAGMA user_version`, no `pbkdf2_hmac`; one default argon2
+  hash would take the object to 107 MiB of 128 (now 19 MiB); wrangler
+  bundles everything under the entry's folder (hence `jukebox/worker/`);
+  point-in-time recovery needs code in the object (built). **Open, and
+  why:** 7.2, 8.2 and 9.1 need Filip's Cloudflare login and the domain, so
+  they start at "The first deploy" above. 8.1 locally is not a pass (500
+  phones: every vote stored, reload p95 7-8 s), so 8.2 is the real
+  question. 9.2 deletes the container, which stays as plan B until 8.2
+  passes. 9.3 touches `jukeboxHeroes-v2/`, the app the printed QR codes
+  reach today, so it belongs to the cutover itself.
+  **Next: Filip runs "The first deploy"; then 8.2 decides between cutover
+  and cut (a) or (b).**
 - 2026-11-13, Claude (Fable 5): decision recorded; branch created; load-test
   scripts added; steps 2.1 and 2.2a done, 170 tests pass (two new, for `transact`). Tooling for step 1
   (`uv`, `pywrangler`, `wrangler`) is not installed on this Mac and was not

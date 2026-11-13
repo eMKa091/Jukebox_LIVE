@@ -174,8 +174,9 @@ cookie — the fact that used to live in `st.session_state` and die on refresh.
 > **Superseded on 2026-11-13.** The decision is now to run everything on
 > Cloudflare, with the app as a Worker and a Durable Object. The plan and its
 > checklist are in [`../docs/08-cloudflare-port.md`](../docs/08-cloudflare-port.md).
-> The Fly.io steps below describe the container version and stay here until
-> that port is finished. **Since step 3.1 of the port, the container is not fit
+> The first Cloudflare deploy is written out in that file, under "The first
+> deploy". The Fly.io steps below describe the container version and stay
+> here until that port is finished. **Since step 3.1 of the port, the container is not fit
 > for a concert:** every request now runs on the one event loop, which is right
 > on the Durable Object and blocks every open stream in a container. To run the
 > container at a gig, deploy commit `3cc2d40` or earlier.
