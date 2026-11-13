@@ -106,8 +106,7 @@ def open_round(db, live_event):
 def app(settings, db):
     from app.main import create_app
 
-    application = create_app(settings)
-    application.state.db = db  # share the fixture's connection and migrations
+    application = create_app(settings, db=db)  # the fixture's database, migrated
     identity.create_admin(db, username=ADMIN_USER, password=ADMIN_PASSWORD)
     return application
 

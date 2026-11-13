@@ -207,9 +207,19 @@ not be `async`. Whatever it raises rolls the transaction back and is re-raised.
       cursor (by U3); constraint failures raised as `IntegrityError`.
       `tests/durable_standin.py` stands in for `ctx.storage` as step 1 saw
       it behave, and every test that takes `db` runs on both backends.
-- [ ] 5.2 `jukebox/worker.py`: the entry Worker and the `Jukebox` object.
+- [x] 5.2 `jukebox/worker.py`: the entry Worker and the `Jukebox` object.
       `jukebox/wrangler.jsonc`: assets from `app/static`, the object binding,
       the SQLite migration tag, `JUKEBOX_PUBLIC_URL`.
+      **Changed: they live in `jukebox/worker/`** (`src/entry.py`,
+      `wrangler.jsonc`, `pyproject.toml`, `build.py`). Wrangler bundles every
+      `.py` under the entry's folder, `.venv` included, so the entry cannot
+      sit in `jukebox/`; pywrangler refuses to run beside a
+      `requirements.txt`; and a symlink to `app/` is not followed.
+      `build.py`, which wrangler runs before every `dev` and `deploy`, copies
+      `../app` into `src/app` (git-ignored), so the app still has one home.
+      The object's region is the var `JUKEBOX_JURISDICTION`: `eu` on
+      Cloudflare, empty locally (the local runtime does not implement it).
+      Runs locally: `/readyz` answers `ready schema=v1` from the object.
 - [ ] 5.3 A smoke script against the local dev server: create an event, go
       live, join, vote, see the count on the band display.
 

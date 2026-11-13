@@ -1,0 +1,36 @@
+// Jukebox LIVE on Cloudflare (docs/08-cloudflare-port.md, step 5.2).
+//
+//   cd jukebox/worker
+//   uvx --from workers-py@1.17.9 pywrangler dev       local, on port 8787
+//   uvx --from workers-py@1.17.9 pywrangler deploy    Filip's account
+{
+  "name": "jukebox-live",
+  "main": "src/entry.py",
+  "compatibility_date": "2026-11-01",
+  "compatibility_flags": ["python_workers"],
+
+  // Copies ../app into src/app and its static files into public/static.
+  "build": { "command": "python3 build.py", "watch_dir": "../app" },
+
+  // render.py hashes app.css and app.js for the cache-buster, so they travel
+  // with the code as text as well as being served from the assets.
+  "rules": [{ "type": "Text", "globs": ["app/static/*"], "fallthrough": true }],
+
+  // /static/* is answered from here without starting the Worker.
+  "assets": { "directory": "public" },
+
+  // The whole app runs in one object, "jukebox", with its SQLite database.
+  "durable_objects": {
+    "bindings": [{ "name": "JUKEBOX", "class_name": "Jukebox" }]
+  },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["Jukebox"] }],
+
+  // JUKEBOX_SECRET_KEY is a secret: `pywrangler secret put JUKEBOX_SECRET_KEY`.
+  "vars": {
+    "JUKEBOX_PUBLIC_URL": "https://hlasuj.jukeboxheroes.cz",
+    // Where the object and its database live. Fixed at the first deploy.
+    "JUKEBOX_JURISDICTION": "eu"
+  },
+
+  "observability": { "enabled": true }
+}

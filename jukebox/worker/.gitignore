@@ -1,0 +1,9 @@
+# Made by build.py from ../app on every dev and deploy; never edit them here.
+src/app/
+public/
+# pywrangler's and wrangler's own.
+python_modules/
+.venv-workers/
+.wrangler/
+# Local secrets for `pywrangler dev`; see .dev.vars.example.
+.dev.vars

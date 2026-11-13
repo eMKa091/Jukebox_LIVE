@@ -27,9 +27,21 @@ from .web.security import Tokens
 log = logging.getLogger("jukebox")
 
 
-def create_app(settings: Settings | None = None, *, hub: Hub | None = None) -> FastAPI:
-    """The app. `hub` is how live updates go out: in this process unless the
-    Durable Object passes its own sockets (web/hub.py)."""
+def create_app(
+    settings: Settings | None = None,
+    *,
+    db=None,
+    hub: Hub | None = None,
+    serve_static: bool = True,
+) -> FastAPI:
+    """The app, in a process of its own unless told otherwise.
+
+    The Durable Object (worker/src/entry.py) passes the rest: `db`, its own
+    database, already migrated; `hub`, its own sockets (web/hub.py); and
+    `serve_static=False`, because Cloudflare serves /static before a request
+    reaches it. Given a `db`, the app has no lifespan: on the Worker that runs
+    once per request, and the object migrates once, when it starts.
+    """
     settings = settings or load_settings()
 
     @asynccontextmanager
@@ -44,11 +56,11 @@ def create_app(settings: Settings | None = None, *, hub: Hub | None = None) -> F
         docs_url=None,
         redoc_url=None,
         openapi_url=None,
-        lifespan=lifespan,
+        lifespan=lifespan if db is None else None,
     )
 
     app.state.settings = settings
-    app.state.db = Database(settings.database_path)
+    app.state.db = db if db is not None else Database(settings.database_path)
     app.state.hub = hub or LocalHub()
     app.state.tokens = Tokens(settings.secret_key, session_max_age=settings.session_max_age)
     app.state.throttle = LoginThrottle(
@@ -56,7 +68,8 @@ def create_app(settings: Settings | None = None, *, hub: Hub | None = None) -> F
         window_seconds=settings.login_window_seconds,
     )
 
-    app.mount("/static", StaticFiles(directory=APP_DIR / "static"), name="static")
+    if serve_static:
+        app.mount("/static", StaticFiles(directory=APP_DIR / "static"), name="static")
     app.include_router(admin.router)
     app.include_router(band.router)
     app.include_router(public.router)
