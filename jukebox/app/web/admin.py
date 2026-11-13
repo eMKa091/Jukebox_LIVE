@@ -21,7 +21,7 @@ from fastapi import APIRouter, Form, Request, UploadFile, WebSocket
 from fastapi.responses import HTMLResponse, Response
 
 from ..domain import ballots, events, identity, log, rounds, songs
-from ..domain.errors import DomainError, NotPermitted
+from ..domain.errors import DomainError, Invalid, NotFound, NotPermitted
 from .deps import get_db, get_settings, get_throttle, get_tokens
 from .hub import Subscription, event_topic, get_hub, serve, subscription_response, votes_topic
 from .render import fragment, redirect, render
@@ -95,6 +95,49 @@ async def login(request: Request, username: str = Form(...), password: str = For
         max_age=settings.session_max_age,
     )
     return response
+
+
+# ----------------------------------------------------------- first admin --
+def _setup_open(request: Request) -> bool:
+    """The setup page exists only while it can do something: a token is set,
+    and there is no account yet. Otherwise it is not there at all."""
+    return bool(get_settings(request).setup_token) and not identity.admin_count(
+        get_db(request).read()
+    )
+
+
+@router.get("/setup", response_class=HTMLResponse)
+async def setup_form(request: Request):
+    if not _setup_open(request):
+        raise NotFound("There is no such page.")
+    return render(request, "admin/setup.html")
+
+
+@router.post("/setup")
+async def setup(
+    request: Request,
+    token: str = Form(""),
+    username: str = Form(...),
+    password: str = Form(...),
+    repeat: str = Form(...),
+):
+    """Make the first account. The token is the deploy's secret, so only
+    whoever set it can; wrong tokens count against the sign-in throttle."""
+    if not _setup_open(request):
+        raise NotFound("There is no such page.")
+    throttle, client = get_throttle(request), client_address(request)
+    try:
+        throttle.check(client)
+        if not identity.setup_token_matches(token, get_settings(request).setup_token):
+            throttle.record_failure(client)
+            raise NotPermitted("That setup token is not right.")
+        if password != repeat:
+            raise Invalid("The two passwords are not the same.")
+        identity.create_admin(get_db(request), username=username, password=password,
+                              actor="setup", first=True)
+    except DomainError as exc:
+        return redirect("/admin/setup", flash=("bad", str(exc)))
+    return redirect("/admin/login", flash=("", f"Account {username.strip()} created. Sign in."))
 
 
 @router.post("/logout")

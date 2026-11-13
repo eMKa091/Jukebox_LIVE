@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block title %}First account — Jukebox LIVE{% endblock %}
+{% block content %}
+<h1>First account</h1>
+<p class="lead">There is no admin account yet. This page makes one, and then
+it is gone. The setup token is the one set on the deploy
+(<code>JUKEBOX_SETUP_TOKEN</code>).</p>
+<form method="post" action="/admin/setup" class="card" style="max-width:380px">
+  <label class="field">
+    <span>Setup token</span>
+    <input type="password" name="token" autocomplete="off" required autofocus>
+  </label>
+  <label class="field">
+    <span>Username</span>
+    <input type="text" name="username" autocomplete="username" required>
+  </label>
+  <label class="field">
+    <span>Password, at least 10 characters</span>
+    <input type="password" name="password" autocomplete="new-password" minlength="10" required>
+  </label>
+  <label class="field">
+    <span>The same again</span>
+    <input type="password" name="repeat" autocomplete="new-password" minlength="10" required>
+  </label>
+  <button class="btn wide" type="submit">Create the account</button>
+</form>
+{% endblock %}

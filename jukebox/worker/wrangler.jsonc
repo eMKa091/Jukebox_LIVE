@@ -10,6 +10,7 @@
   "compatibility_flags": ["python_workers"],
 
   // Copies ../app into src/app and its static files into public/static.
+  // `dev` reloads when ../app changes; after editing src/entry.py, restart it.
   "build": { "command": "python3 build.py", "watch_dir": "../app" },
 
   // render.py hashes app.css and app.js for the cache-buster, so they travel
@@ -25,7 +26,8 @@
   },
   "migrations": [{ "tag": "v1", "new_sqlite_classes": ["Jukebox"] }],
 
-  // JUKEBOX_SECRET_KEY is a secret: `pywrangler secret put JUKEBOX_SECRET_KEY`.
+  // Two secrets, set with `pywrangler secret put <NAME>`: JUKEBOX_SECRET_KEY,
+  // and JUKEBOX_SETUP_TOKEN for the first account (/admin/setup).
   "vars": {
     "JUKEBOX_PUBLIC_URL": "https://hlasuj.jukeboxheroes.cz",
     // Where the object and its database live. Fixed at the first deploy.

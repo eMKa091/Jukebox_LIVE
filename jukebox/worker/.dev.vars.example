@@ -3,5 +3,6 @@
 JUKEBOX_DEV=1
 JUKEBOX_SECRET_KEY=local-development-only-not-a-secret
 JUKEBOX_PUBLIC_URL=
+JUKEBOX_SETUP_TOKEN=local-setup-token
 # The local runtime does not implement jurisdictions.
 JUKEBOX_JURISDICTION=

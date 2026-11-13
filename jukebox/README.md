@@ -296,6 +296,8 @@ evening with `fly scale vm shared-cpu-2x` and back afterwards.
 | `JUKEBOX_TIMEZONE` | no | the zone start times are typed and shown in, default `Europe/Prague` |
 | `JUKEBOX_SESSION_MAX_AGE` | no | admin session lifetime, default 12h |
 | `JUKEBOX_LOGIN_MAX_ATTEMPTS` | no | failed sign-ins from one address before a lockout, default 8 |
+| `JUKEBOX_SETUP_TOKEN` | on the Worker, once | opens `/admin/setup`, which makes the first admin account and then closes; unset means no setup page |
+| `JUKEBOX_JURISDICTION` | on the Worker | where the Durable Object lives, `eu`; empty in local runs |
 | `LITESTREAM_BUCKET` | in production | the bucket the database is replicated to; unset means no replication |
 | `LITESTREAM_ENDPOINT` | with the bucket | the bucket's S3 endpoint, `https://…` |
 | `LITESTREAM_ACCESS_KEY_ID`, `LITESTREAM_SECRET_ACCESS_KEY` | with the bucket | the bucket's keys |

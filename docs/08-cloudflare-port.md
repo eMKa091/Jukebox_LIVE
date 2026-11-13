@@ -61,7 +61,7 @@ What is rebuilt:
 | settings from `os.environ` | settings from the Worker's `env` | 3 |
 | `hub.py`: asyncio queues, Server-Sent Events | the object's WebSockets; `app.js` speaks WebSocket | 4 |
 | `PRAGMA user_version` | a `schema_migrations` table | 2 |
-| argon2 | argon2 if it imports there, else PBKDF2 from `hashlib` | 6 |
+| argon2 at 64 MiB | argon2 at 19 MiB (it imports; there is no PBKDF2 to fall back to) | 6 |
 | `python -m app.cli create-admin` | a one-time setup page guarded by a secret | 6 |
 | `scripts/migrate_legacy.py` writes a file | the same, then an admin-only import into the object | 7 |
 | Dockerfile, `deploy/`, `fly.toml`, Litestream | deleted | 9 |
@@ -224,11 +224,19 @@ not be `async`. Whatever it raises rolls the transaction back and is re-raised.
       live, join, vote, see the count on the band display.
 
 **Step 6 — accounts**
-- [ ] 6.1 Password hashing by U7.
-- [ ] 6.2 First admin: a setup page that works once, only with the secret
+- [x] 6.1 Password hashing by U7: argon2, **at 19 MiB instead of 64.**
+      Measured in the object locally: the app alone holds 52 MiB of Wasm
+      heap; one hash at argon2-cffi's default grew it to 107 MiB and it never
+      shrinks, against 128 MB for the whole isolate. At OWASP's minimum for
+      argon2id (19 MiB, 2 passes, 1 lane) it grows to 62 MiB, and a hash
+      takes 20 ms instead of about 200. Older hashes are redone at sign-in.
+- [x] 6.2 First admin: a setup page that works once, only with the secret
       `JUKEBOX_SETUP_TOKEN`, and only while there is no admin.
-- [ ] 6.3 The sign-in throttle's counts in a table (the object's memory is
-      emptied whenever it sleeps).
+      `/admin/setup`; 404 otherwise. Wrong tokens count against the sign-in
+      throttle; "no account yet" is checked inside the transaction that
+      makes the account.
+- [x] 6.3 The sign-in throttle's counts in a table (the object's memory is
+      emptied whenever it sleeps). `login_failures`, migration 002.
 
 **Step 7 — the data**
 - [ ] 7.1 Import: `migrate_legacy.py` output into the object through an

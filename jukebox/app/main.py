@@ -64,6 +64,7 @@ def create_app(
     app.state.hub = hub or LocalHub()
     app.state.tokens = Tokens(settings.secret_key, session_max_age=settings.session_max_age)
     app.state.throttle = LoginThrottle(
+        app.state.db,
         max_attempts=settings.login_max_attempts,
         window_seconds=settings.login_window_seconds,
     )

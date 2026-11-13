@@ -248,11 +248,11 @@ def test_r9_only_two_password_checks_run_at_once(db, monkeypatch):
     for _ in range(2):
         assert identity._hashing.acquire(blocking=False)
     try:
-        throttle = identity.LoginThrottle(max_attempts=8, window_seconds=900)
+        throttle = identity.LoginThrottle(db, max_attempts=8, window_seconds=900)
         with pytest.raises(identity.NotPermitted, match="busy"):
             identity.authenticate(db, username="x", password="y", throttle=throttle, client="a")
         # Being turned away for being busy is not a failed attempt.
-        assert throttle._attempts == {}
+        assert throttle.failures("a") == []
     finally:
         identity._hashing.release()
         identity._hashing.release()

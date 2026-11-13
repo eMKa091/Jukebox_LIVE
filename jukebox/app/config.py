@@ -32,6 +32,7 @@ SETTINGS_KEYS = (
     "JUKEBOX_LOGIN_WINDOW",
     "JUKEBOX_PUBLIC_URL",
     "JUKEBOX_TIMEZONE",
+    "JUKEBOX_SETUP_TOKEN",
 )
 
 
@@ -70,6 +71,11 @@ class Settings:
     # The zone the band lives in. Start times are typed and shown in it and
     # stored as UTC; the container itself runs in UTC and is never asked.
     timezone: str = "Europe/Prague"
+
+    # Opens /admin/setup, which makes the first admin account and then closes
+    # for good. The Worker has no shell to run the CLI in (docs/08, step 6.2).
+    # Empty means no setup page at all.
+    setup_token: str = ""
 
     @property
     def secure_cookies(self) -> bool:
@@ -114,4 +120,5 @@ def load_settings(
         dev_mode=dev_mode,
         public_url=env.get("JUKEBOX_PUBLIC_URL", "").strip().rstrip("/"),
         timezone=env.get("JUKEBOX_TIMEZONE", "Europe/Prague"),
+        setup_token=env.get("JUKEBOX_SETUP_TOKEN", "").strip(),
     )
