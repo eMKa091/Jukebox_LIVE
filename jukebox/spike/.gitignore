@@ -1,6 +1,0 @@
-.venv/
-.wrangler/
-python_modules/
-src/vendor/
-uv.lock
-pylock.toml

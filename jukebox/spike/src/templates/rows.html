@@ -1,8 +1,0 @@
-<!doctype html><title>{{ title }}</title>
-<ul class="songs">
-{% for s in songs %}
-  <li class="song" data-search="{{ (s.title ~ ' ' ~ s.artist)|lower }}">
-    <label><input type="checkbox" name="song_ids" value="{{ s.id }}"> <b>{{ s.title }}</b> <span>{{ s.artist }}</span></label>
-  </li>
-{% endfor %}
-</ul>

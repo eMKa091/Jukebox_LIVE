@@ -145,7 +145,7 @@ in the log rather than quietly doing something else.
       Changed: the spike's page is not the real ballot, and its local timing
       showed the cost is mostly per request, not per template. The deployed
       timing is taken once, on the real app, in 8.2.
-- [ ] Delete `jukebox/spike/` once the answers are written down.
+- [x] Delete `jukebox/spike/` once the answers are written down.
 
 **Step 2 — the storage seam** *(pure refactor; the container app keeps working)*
 - [x] 2.1 `Database.transact(fn)` and a backend-neutral `IntegrityError` in
