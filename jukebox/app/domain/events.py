@@ -103,7 +103,7 @@ def create(
     except ValueError as exc:
         raise Invalid(f"{starts_at!r} is not a valid date and time.") from exc
 
-    with db.write() as conn:
+    def work(conn: sqlite3.Connection) -> Event:
         slug = _unique_slug(conn, slugify(name))
         cur = conn.execute(
             "INSERT INTO events (name, slug, venue, starts_at, state, created_at)"
@@ -131,6 +131,8 @@ def create(
         )
         return Event(id=event_id, name=name, slug=slug, venue=venue.strip(),
                      starts_at=starts_at, state="draft")
+
+    return db.transact(work)
 
 
 def get(conn: sqlite3.Connection, event_id: int) -> Event:
@@ -166,7 +168,8 @@ def transition(db: Database, *, event_id: int, to: str, actor: str) -> Event:
     """Move an event to a new state, or refuse and say why."""
     if to not in STATES:
         raise Invalid(f"{to!r} is not an event state.")
-    with db.write() as conn:
+
+    def work(conn: sqlite3.Connection) -> Event:
         event = get(conn, event_id)
         if event.state == to:
             return event
@@ -206,9 +209,11 @@ def transition(db: Database, *, event_id: int, to: str, actor: str) -> Event:
         )
         return get(conn, event_id)
 
+    return db.transact(work)
+
 
 def update_band_notes(db: Database, *, event_id: int, body: str, actor: str) -> None:
-    with db.write() as conn:
+    def work(conn: sqlite3.Connection) -> None:
         get(conn, event_id)
         conn.execute(
             "INSERT INTO band_notes (event_id, body, updated_at) VALUES (?, ?, ?)"
@@ -217,6 +222,8 @@ def update_band_notes(db: Database, *, event_id: int, body: str, actor: str) -> 
             (event_id, body, utcnow()),
         )
         log.record(conn, actor=actor, action="band_notes.updated", event_id=event_id)
+
+    db.transact(work)
 
 
 def band_notes(conn: sqlite3.Connection, event_id: int) -> str:
@@ -230,7 +237,7 @@ def delete(db: Database, *, event_id: int, actor: str) -> None:
     Refused while live, so nobody can delete the thing two hundred people are
     currently voting in.
     """
-    with db.write() as conn:
+    def work(conn: sqlite3.Connection) -> None:
         event = get(conn, event_id)
         if event.state == "live":
             raise Conflict("Close the event before deleting it.")
@@ -240,3 +247,5 @@ def delete(db: Database, *, event_id: int, actor: str) -> None:
         log.record(
             conn, actor=actor, action="event.deleted", event_id=event_id, name=event.name
         )
+
+    db.transact(work)

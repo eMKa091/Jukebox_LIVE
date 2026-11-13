@@ -151,7 +151,7 @@ in the log rather than quietly doing something else.
 - [x] 2.1 `Database.transact(fn)` and a backend-neutral `IntegrityError` in
       `app/db.py`. `write()` stays until 2.3.
 - [x] 2.2a `domain/songs.py` converted, as the worked example of the pattern.
-- [ ] 2.2b `domain/events.py`
+- [x] 2.2b `domain/events.py`
 - [ ] 2.2c `domain/rounds.py`
 - [ ] 2.2d `domain/ballots.py`
 - [ ] 2.2e `domain/identity.py`
