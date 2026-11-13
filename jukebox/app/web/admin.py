@@ -12,7 +12,7 @@ from __future__ import annotations
 import csv
 import io
 import json
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from urllib.parse import quote
 from zoneinfo import ZoneInfo
 
@@ -786,6 +786,44 @@ async def import_everything(request: Request, file: UploadFile):
     except DomainError as exc:
         return JSONResponse({"error": str(exc)}, status_code=exc.status)
     return JSONResponse({"imported": counts})
+
+
+# Cloudflare keeps every moment of the object's database this far back.
+RESTORE_DAYS = 30
+
+
+@router.post("/data/restore")
+async def restore_to(request: Request, at: str = Form(...)):
+    """Put the whole database back as it was at `at`, in the band's time.
+
+    Point-in-time recovery. Cloudflare keeps the object's database at every
+    moment of the last 30 days, but only the object can ask for one, so this
+    is the button (docs/08, step 7.2). Everything after `at` goes, events,
+    votes and accounts alike; the object restarts, and every screen
+    reconnects and reloads. Pull a copy first (scripts/transfer.py restore
+    does). Only on the Worker: the container's database is a file.
+    """
+    current_admin(request)
+    restore = request.app.state.restore
+    if restore is None:
+        return JSONResponse({"error": "Restoring to a moment needs the Worker; this copy keeps "
+                                      "its database in a file."}, status_code=501)
+    try:
+        moment = datetime.fromisoformat(at)
+    except ValueError:
+        return JSONResponse({"error": f"{at!r} is not a date and time."}, status_code=400)
+    if moment.tzinfo is None:
+        moment = moment.replace(tzinfo=_zone(request))
+    moment = moment.astimezone(timezone.utc)
+    now = datetime.now(timezone.utc)
+    if not now - timedelta(days=RESTORE_DAYS) < moment < now:
+        return JSONResponse({"error": f"Pick a moment in the last {RESTORE_DAYS} days."},
+                            status_code=400)
+    try:
+        await restore(moment.timestamp() * 1000)
+    except Exception as exc:  # Cloudflare's refusal, word for word (none locally)
+        return JSONResponse({"error": str(exc)}, status_code=502)
+    return JSONResponse({"restoring_to": moment.isoformat().replace("+00:00", "Z")})
 
 
 @router.get("/events/{event_id}/qr.svg")

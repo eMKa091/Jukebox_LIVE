@@ -3,6 +3,7 @@
 
     python scripts/transfer.py push FILE.db URL USER     the file into the app
     python scripts/transfer.py pull URL USER FILE.db     the app into a new file
+    python scripts/transfer.py restore URL USER WHEN     the app as it was at WHEN
 
 For the Worker, which has no file to copy (docs/08-cloudflare-port.md, step 7).
 The password is asked for, or read from JUKEBOX_PASSWORD.
@@ -17,6 +18,10 @@ out, not on the file that went in:
 
 `push` is refused by an app that already holds songs or events. `pull` is
 also the copy to keep: run it after every gig.
+
+`restore` puts the Worker's whole database back to WHEN, the band's local
+time (`2026-11-20T21:30`), up to 30 days back; everything after it goes. It
+pulls a copy of the present to data/before-restore-<time>.db first.
 """
 
 from __future__ import annotations
@@ -27,6 +32,7 @@ import json
 import os
 import sqlite3
 import sys
+import time
 from pathlib import Path
 
 import httpx
@@ -77,6 +83,19 @@ def pull(url: str, user: str, path: Path) -> int:
     return 0
 
 
+def restore(url: str, user: str, when: str) -> int:
+    stamp = time.strftime("%Y%m%d-%H%M%S")
+    keep = Path(__file__).resolve().parent.parent / "data" / f"before-restore-{stamp}.db"
+    keep.parent.mkdir(parents=True, exist_ok=True)
+    print(f"First, a copy of the present: {keep}")
+    pull(url, user, keep)
+    answer = _signed_in(url, user).post("/admin/data/restore", data={"at": when})
+    if answer.status_code != 200:
+        raise SystemExit(f"Refused ({answer.status_code}): {answer.text[:300]}")
+    print(f"Restoring to {answer.json()['restoring_to']}. The app restarts; pull again to check.")
+    return 0
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = parser.add_subparsers(dest="command", required=True)
@@ -88,9 +107,15 @@ def main() -> int:
     p.add_argument("url")
     p.add_argument("user")
     p.add_argument("file", type=Path)
+    p = sub.add_parser("restore", help="the app's database as it was at a moment")
+    p.add_argument("url")
+    p.add_argument("user")
+    p.add_argument("when", help="the band's local time, e.g. 2026-11-20T21:30")
     args = parser.parse_args()
     if args.command == "push":
         return push(args.file, args.url, args.user)
+    if args.command == "restore":
+        return restore(args.url, args.user, args.when)
     return pull(args.url, args.user, args.file)
 
 

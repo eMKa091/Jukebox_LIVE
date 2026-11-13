@@ -254,6 +254,18 @@ not be `async`. Whatever it raises rolls the transaction back and is re-raised.
       45 votes), a second push refused, the data pulled back out and **G2
       passed on the pulled copy.**
 - [ ] 7.2 A restore drill with point-in-time recovery on the deployed object.
+      **Found on the way: recovery is not a button.** Only the object can
+      ask for an earlier moment (`getBookmarkForTime`, then
+      `onNextSessionRestoreBookmark` and a restart), so without code there
+      was no way to use the 30 days at all. Built: `/admin/data/restore`
+      (admin, the band's local time, the last 30 days) and the object's
+      `_restore` in `worker/src/entry.py`; `scripts/transfer.py restore URL
+      USER WHEN` pulls a copy of the present first. Locally the request
+      reaches Cloudflare's call, which answers "does not implement
+      point-in-time recovery", as documented. **The drill, once deployed:**
+      `pull` a copy A; note the time T; add a song "Restore drill"; wait a
+      minute; `restore URL USER T`; `pull` a copy B. Pass: B has no "Restore
+      drill" and the same songs, events and votes as A.
 
 **Step 8 — 500 phones on the real thing**
 - [ ] 8.1 `tools/loadtest/phones.py` taught to speak WebSocket. (Today it speaks

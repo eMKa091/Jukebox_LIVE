@@ -88,3 +88,44 @@ def test_the_export_and_import_routes_are_for_admins(client, admin_client, catal
     again = admin_client.post("/admin/data/import",
                               files={"file": ("x.json", export.content, "application/json")})
     assert again.status_code == 409  # this app holds songs already
+
+
+# ------------------------------------------------------------------ 7.2 --
+def test_restoring_to_a_moment_is_the_workers(admin_client):
+    answer = admin_client.post("/admin/data/restore", data={"at": "2026-11-01T20:00"})
+    assert answer.status_code == 501
+
+
+def test_a_restore_asks_the_object_for_the_moment_in_the_bands_time(settings, db):
+    from datetime import datetime, timedelta
+    from zoneinfo import ZoneInfo
+
+    from fastapi.testclient import TestClient
+
+    from app.main import create_app
+
+    asked: list[float] = []
+
+    async def restore(at_ms: float) -> None:
+        asked.append(at_ms)
+
+    identity.create_admin(db, username="marek", password=ADMIN_PASSWORD)
+    with TestClient(create_app(settings, db=db, restore=restore)) as client:
+        client.post("/admin/login", data={"username": "marek", "password": ADMIN_PASSWORD})
+        local = (datetime.now(ZoneInfo("Europe/Prague")) - timedelta(hours=2)).replace(
+            second=0, microsecond=0, tzinfo=None)
+        done = client.post("/admin/data/restore", data={"at": local.isoformat()})
+        assert done.status_code == 200
+        expected = local.replace(tzinfo=ZoneInfo("Europe/Prague")).timestamp() * 1000
+        assert asked == [expected]
+
+        for too_far in (datetime.now() + timedelta(hours=1), datetime.now() - timedelta(days=31)):
+            assert client.post("/admin/data/restore",
+                               data={"at": too_far.isoformat()}).status_code == 400
+        assert len(asked) == 1
+
+
+def test_only_an_admin_can_restore(client):
+    answer = client.post("/admin/data/restore", data={"at": "2026-11-01T20:00"},
+                         follow_redirects=False)
+    assert answer.status_code == 303

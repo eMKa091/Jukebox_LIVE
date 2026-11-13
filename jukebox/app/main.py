@@ -33,13 +33,15 @@ def create_app(
     db=None,
     hub: Hub | None = None,
     serve_static: bool = True,
+    restore=None,
 ) -> FastAPI:
     """The app, in a process of its own unless told otherwise.
 
     The Durable Object (worker/src/entry.py) passes the rest: `db`, its own
     database, already migrated; `hub`, its own sockets (web/hub.py); and
     `serve_static=False`, because Cloudflare serves /static before a request
-    reaches it. Given a `db`, the app has no lifespan: on the Worker that runs
+    reaches it; and `restore`, how it puts its database back to a moment
+    (/admin/data/restore). Given a `db`, the app has no lifespan: on the Worker that runs
     once per request, and the object migrates once, when it starts.
     """
     settings = settings or load_settings()
@@ -62,6 +64,7 @@ def create_app(
     app.state.settings = settings
     app.state.db = db if db is not None else Database(settings.database_path)
     app.state.hub = hub or LocalHub()
+    app.state.restore = restore
     app.state.tokens = Tokens(settings.secret_key, session_max_age=settings.session_max_age)
     app.state.throttle = LoginThrottle(
         app.state.db,

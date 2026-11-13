@@ -15,6 +15,7 @@ the object's own.
 
 from __future__ import annotations
 
+import asyncio
 import json
 from contextlib import suppress
 
@@ -64,7 +65,7 @@ class Jukebox(DurableObject):
         db.migrate()
         self.hub = SocketHub(ctx)
         self.app = create_app(load_settings(_settings_env(env)), db=db, hub=self.hub,
-                              serve_static=False)
+                              serve_static=False, restore=self._restore)
         # Pings are answered by the runtime itself, so a room full of phones
         # keeping their connections alive does not wake the object.
         ctx.setWebSocketAutoResponse(WebSocketRequestResponsePair.new(PING, PONG))
@@ -97,6 +98,21 @@ class Jukebox(DurableObject):
         self.ctx.acceptWebSocket(server, to_js(list(subscription.topics)))
         server.send(self.hub.ready(subscription))
         return Response(None, status=101, web_socket=client)
+
+    async def _restore(self, at_ms: float) -> None:
+        """Point-in-time recovery: the database as it was at `at_ms`.
+
+        It takes effect when the object next starts, so the object stops
+        itself just after the answer has gone out (docs/08, step 7.2).
+        """
+        bookmark = await self.ctx.storage.getBookmarkForTime(at_ms)
+        await self.ctx.storage.onNextSessionRestoreBookmark(bookmark)
+        asyncio.ensure_future(self._stop_soon())
+
+    async def _stop_soon(self) -> None:
+        await asyncio.sleep(0.5)
+        with suppress(BaseException):  # abort() raises to end this task
+            self.ctx.abort("restoring to an earlier moment")
 
     async def webSocketMessage(self, ws, message):
         """Nothing to do: screens only listen, and pings never get here."""
