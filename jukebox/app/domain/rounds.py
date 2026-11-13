@@ -12,7 +12,7 @@ from __future__ import annotations
 import sqlite3
 from dataclasses import dataclass
 
-from ..db import Database, utcnow
+from ..db import Database, IntegrityError, utcnow
 from . import log
 from .errors import Conflict, Invalid, NotFound
 
@@ -181,11 +181,11 @@ def transition(db: Database, *, round_id: int, to: str, actor: str) -> Round:
                     " WHERE id = ?",
                     (utcnow(), round_id),
                 )
-            except sqlite3.IntegrityError as exc:
+            except IntegrityError as exc:
                 # one_open_round fired. Reachable only if another writer
-                # committed between the check above and this statement;
-                # BEGIN IMMEDIATE makes that vanishingly unlikely, but the
-                # index -- not the check -- is what actually guarantees it.
+                # committed between the check above and this statement; one
+                # transaction makes that vanishingly unlikely, but the index
+                # -- not the check -- is what actually guarantees it.
                 raise Conflict("Another round is already open.") from exc
         else:
             conn.execute(

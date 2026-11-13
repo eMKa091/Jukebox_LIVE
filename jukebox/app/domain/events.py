@@ -18,7 +18,7 @@ import unicodedata
 from dataclasses import dataclass
 from datetime import datetime
 
-from ..db import Database, utcnow
+from ..db import Database, IntegrityError, utcnow
 from . import log
 from .errors import Conflict, Invalid, NotFound
 
@@ -201,7 +201,7 @@ def transition(db: Database, *, event_id: int, to: str, actor: str) -> Event:
             )
         try:
             conn.execute("UPDATE events SET state = ? WHERE id = ?", (to, event_id))
-        except sqlite3.IntegrityError as exc:
+        except IntegrityError as exc:
             # one_live_event fired: another event went live concurrently.
             raise Conflict("Another event is already live.") from exc
         log.record(
