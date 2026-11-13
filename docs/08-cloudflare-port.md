@@ -267,6 +267,12 @@ loading the ballot several times could reach the rows-read cap on the night.
 
 Newest first. One line per session: date, who, what was done, what is next.
 
+- 2026-11-13, Claude (Opus 5.5), second session: on `main` at Filip's request.
+  Step 1: uv installed, U1-U8 answered yes on the local runtime, U9 timed
+  locally only (close to the need; 8.2 decides). Not foreseen: no threads at
+  all (3.1 required), `PRAGMA user_version` refused (2.5 required), no
+  `pbkdf2_hmac` (argon2 works, so no fallback needed). Steps 2, 3 and 4 done,
+  181 tests pass, R1 passes in a browser. **Next: 5.1.**
 - 2026-11-13, Claude (Fable 5): decision recorded; branch created; load-test
   scripts added; steps 2.1 and 2.2a done, 170 tests pass (two new, for `transact`). Tooling for step 1
   (`uv`, `pywrangler`, `wrangler`) is not installed on this Mac and was not
