@@ -131,15 +131,16 @@ def test_two_threads_opening_rounds_produce_one_winner(db, live_event, catalogue
     first, second = rounds.for_event(db.read(), live_event.id)
     rounds.assign_all_songs(db, round_id=second.id, actor="t")
 
-    from app.db import Database
+    from tests.conftest import handle_for_thread
 
     results: list[object] = []
     barrier = threading.Barrier(2)
 
     def attempt(round_id: int) -> None:
         # A separate Database object per thread: two genuinely independent
-        # connections to the same file, which is what production looks like.
-        own = Database(db.path)
+        # connections to the same file, which is what the container looks
+        # like. On the object, the one database both requests queue for.
+        own = handle_for_thread(db)
         barrier.wait()
         try:
             results.append(rounds.transition(own, round_id=round_id, to="open", actor="t"))

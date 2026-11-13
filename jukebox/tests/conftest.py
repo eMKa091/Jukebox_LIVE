@@ -2,6 +2,10 @@
 
 Every test gets its own database file, so nothing leaks between tests and the
 whole suite can run in parallel later if it ever needs to.
+
+Every test that takes `db` runs twice: on the file the container uses, and
+through app.db_durable on a stand-in for the Durable Object's storage
+(tests/durable_standin.py). The rules must not be able to tell them apart.
 """
 
 from __future__ import annotations
@@ -35,12 +39,30 @@ def settings(tmp_path) -> Settings:
     )
 
 
-@pytest.fixture
-def db(settings) -> Database:
-    database = Database(settings.database_path)
+@pytest.fixture(params=["sqlite", "durable"])
+def db(request, settings) -> Database:
+    if request.param == "sqlite":
+        database = Database(settings.database_path)
+        database.migrate()
+        yield database
+        database.close()
+        return
+
+    from app.db_durable import DurableDatabase
+    from tests.durable_standin import StandInStorage
+
+    storage = StandInStorage(settings.database_path)
+    database = DurableDatabase(storage)
     database.migrate()
     yield database
-    database.close()
+    storage.close()
+
+
+def handle_for_thread(db):
+    """What one more concurrent caller gets: on the file, a connection of its
+    own, which is what the container's threads have; on the object, the object
+    itself, which takes one request at a time."""
+    return Database(db.path) if isinstance(db, Database) else db
 
 
 @pytest.fixture

@@ -202,9 +202,11 @@ not be `async`. Whatever it raises rolls the transaction back and is re-raised.
       To run again on the Worker in 5.3.
 
 **Step 5 — the Durable Object**
-- [ ] 5.1 `app/db_durable.py`: the same interface over `ctx.storage.sql`. Rows
+- [x] 5.1 `app/db_durable.py`: the same interface over `ctx.storage.sql`. Rows
       readable by name and by position; `lastrowid` and `rowcount` on the
       cursor (by U3); constraint failures raised as `IntegrityError`.
+      `tests/durable_standin.py` stands in for `ctx.storage` as step 1 saw
+      it behave, and every test that takes `db` runs on both backends.
 - [ ] 5.2 `jukebox/worker.py`: the entry Worker and the `Jukebox` object.
       `jukebox/wrangler.jsonc`: assets from `app/static`, the object binding,
       the SQLite migration tag, `JUKEBOX_PUBLIC_URL`.

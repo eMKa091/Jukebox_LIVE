@@ -149,14 +149,14 @@ def test_played_songs_drop_out_of_the_tally(db, open_round, voter):
 
 def test_a_burst_of_voters_all_land(db, open_round):
     """Sixty simultaneous ballots. Nothing lost, nothing double-counted."""
-    from app.db import Database
+    from tests.conftest import handle_for_thread
 
     picks = song_ids(db, open_round.id, 3)
     errors: list[Exception] = []
     barrier = threading.Barrier(60)
 
     def vote(n: int) -> None:
-        own = Database(db.path)
+        own = handle_for_thread(db)
         try:
             v = ballots.voter_for_device(own, event_id=open_round.event_id,
                                          device_token=f"burst-{n}", display_name=f"host{n}")
