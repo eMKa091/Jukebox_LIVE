@@ -8,7 +8,6 @@ the way `?admin=Band` could be (F3).
 from __future__ import annotations
 
 from fastapi import APIRouter, Request
-from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import HTMLResponse
 
 from ..domain import ballots, events, log, rounds
@@ -56,13 +55,13 @@ def _live_context(request: Request, event) -> dict:
 
 
 @router.get("/{token}", response_class=HTMLResponse)
-def display(token: str, request: Request):
+async def display(token: str, request: Request):
     event = _resolve(request, token)
     return render(request, "band.html", token=token, **_live_context(request, event))
 
 
 @router.get("/{token}/live", response_class=HTMLResponse)
-def live_fragment(token: str, request: Request):
+async def live_fragment(token: str, request: Request):
     """Re-rendered in place whenever a vote lands. No page reload."""
     event = _resolve(request, token)
     return fragment("_band_live.html", **_live_context(request, event))
@@ -70,9 +69,6 @@ def live_fragment(token: str, request: Request):
 
 @router.get("/{token}/stream")
 async def stream(token: str, request: Request):
-    def current() -> tuple[int, int]:
-        event = _resolve(request, token)
-        return event.id, log.stamp(get_db(request).read(), event.id)
-
-    event_id, stamp = await run_in_threadpool(current)
-    return stream_response(event_topic(event_id), votes_topic(event_id), ready={"stamp": stamp})
+    event = _resolve(request, token)
+    stamp = log.stamp(get_db(request).read(), event.id)
+    return stream_response(event_topic(event.id), votes_topic(event.id), ready={"stamp": stamp})

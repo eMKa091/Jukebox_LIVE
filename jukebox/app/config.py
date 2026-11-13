@@ -52,12 +52,6 @@ class Settings:
     # stored as UTC; the container itself runs in UTC and is never asked.
     timezone: str = "Europe/Prague"
 
-    # Threads that serve ordinary requests. Few on purpose: every request is a
-    # handful of SQLite reads, sqlite3 lets go of the interpreter lock on every
-    # row, and forty threads passing that lock around took nine times the CPU
-    # of four to send five hundred phones their ballot (docs/07, R2).
-    worker_threads: int = 4
-
     @property
     def secure_cookies(self) -> bool:
         # Cookies are Secure in production. In dev the app is served over
@@ -98,5 +92,4 @@ def load_settings(*, require_secret: bool = True) -> Settings:
         dev_mode=dev_mode,
         public_url=os.getenv("JUKEBOX_PUBLIC_URL", "").strip().rstrip("/"),
         timezone=os.getenv("JUKEBOX_TIMEZONE", "Europe/Prague"),
-        worker_threads=max(1, int(os.getenv("JUKEBOX_THREADS", "4"))),
     )

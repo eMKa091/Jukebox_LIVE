@@ -76,11 +76,16 @@ def test_a_dropped_subscriber_is_disconnected_not_left_deaf():
 
 
 # ------------------------------------------------------------------- R2 --
-def test_r2_requests_run_on_a_few_threads(client, settings):
-    import anyio.to_thread
+def test_every_handler_is_async_because_the_worker_has_no_threads(app):
+    """R2's few threads are gone with the port: a Python Worker cannot start
+    one, and a plain `def` handler fails there (docs/08, U2)."""
+    import inspect
 
-    tokens = client.portal.call(lambda: anyio.to_thread.current_default_thread_limiter().total_tokens)
-    assert tokens == settings.worker_threads == 4
+    from fastapi.routing import APIRoute
+
+    plain = [r.path for r in app.routes
+             if isinstance(r, APIRoute) and not inspect.iscoroutinefunction(r.endpoint)]
+    assert plain == []
 
 
 def test_r2_a_vote_is_announced_to_the_band_not_to_the_phones(client, open_round, db, monkeypatch):
@@ -334,10 +339,8 @@ def test_the_qr_code_uses_the_public_address_when_one_is_set(app, admin_client, 
 def test_the_new_settings_come_from_the_environment(monkeypatch):
     monkeypatch.setenv("JUKEBOX_DEV", "1")
     monkeypatch.setenv("JUKEBOX_PUBLIC_URL", "https://hlasuj.example.cz/")
-    monkeypatch.setenv("JUKEBOX_THREADS", "6")
     settings = load_settings()
     assert settings.public_url == "https://hlasuj.example.cz"
-    assert settings.worker_threads == 6
     assert settings.timezone == "Europe/Prague"
 
 

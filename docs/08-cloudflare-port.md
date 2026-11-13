@@ -176,7 +176,7 @@ def retire(db, *, song_id, actor):         def retire(db, *, song_id, actor):
 not be `async`. Whatever it raises rolls the transaction back and is re-raised.
 
 **Step 3 — the web layer without threads**
-- [ ] 3.1 Every handler `async def`, calling the rules inline. Remove the
+- [x] 3.1 Every handler `async def`, calling the rules inline. Remove the
       thread limiter in `main.py` and the `run_in_threadpool` calls. (On the
       object there is one thread and SQL is in-process, so this is correct
       there. It is NOT correct for the container, so from here on the

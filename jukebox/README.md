@@ -162,8 +162,11 @@ cookie — the fact that used to live in `st.session_state` and die on refresh.
 > **Superseded on 2026-11-13.** The decision is now to run everything on
 > Cloudflare, with the app as a Worker and a Durable Object. The plan and its
 > checklist are in [`../docs/08-cloudflare-port.md`](../docs/08-cloudflare-port.md).
-> The Fly.io steps below describe the container version, which is still the
-> one that runs, and stay here until that port is finished.
+> The Fly.io steps below describe the container version and stay here until
+> that port is finished. **Since step 3.1 of the port, the container is not fit
+> for a concert:** every request now runs on the one event loop, which is right
+> on the Durable Object and blocks every open stream in a container. To run the
+> container at a gig, deploy commit `3cc2d40` or earlier.
 
 Fly.io, Warsaw, one small machine that is always on, with Cloudflare in front
 for the name and Cloudflare R2 holding the backup. See
@@ -285,7 +288,6 @@ evening with `fly scale vm shared-cpu-2x` and back afterwards.
 | `JUKEBOX_DB` | no | database path, default `./data/jukebox.db` |
 | `JUKEBOX_DEV` | no | relaxes cookie `Secure`, generates a throwaway secret |
 | `JUKEBOX_TIMEZONE` | no | the zone start times are typed and shown in, default `Europe/Prague` |
-| `JUKEBOX_THREADS` | no | worker threads, default 4; more is slower, see `app/config.py` |
 | `JUKEBOX_SESSION_MAX_AGE` | no | admin session lifetime, default 12h |
 | `JUKEBOX_LOGIN_MAX_ATTEMPTS` | no | failed sign-ins from one address before a lockout, default 8 |
 | `LITESTREAM_BUCKET` | in production | the bucket the database is replicated to; unset means no replication |

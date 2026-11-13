@@ -15,7 +15,6 @@ on refresh (F6).
 from __future__ import annotations
 
 from fastapi import APIRouter, Form, Request
-from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import HTMLResponse
 
 from ..domain import ballots, events, log, rounds, songs
@@ -29,7 +28,7 @@ router = APIRouter()
 
 
 @router.get("/", response_class=HTMLResponse)
-def index(request: Request):
+async def index(request: Request):
     db = get_db(request)
     event = events.live_event(db.read())
     if event is None:
@@ -48,7 +47,7 @@ def _splash(request: Request, message: str) -> HTMLResponse:
 
 
 @router.get("/e/{slug}", response_class=HTMLResponse)
-def event_page(slug: str, request: Request):
+async def event_page(slug: str, request: Request):
     db = get_db(request)
     settings = get_settings(request)
     conn = db.read()
@@ -113,7 +112,7 @@ def event_page(slug: str, request: Request):
 
 
 @router.post("/e/{slug}/join")
-def join(slug: str, request: Request, display_name: str = Form(...)):
+async def join(slug: str, request: Request, display_name: str = Form(...)):
     db = get_db(request)
     settings = get_settings(request)
     event = events.by_slug(db.read(), slug)
@@ -140,15 +139,13 @@ def join(slug: str, request: Request, display_name: str = Form(...)):
 
 
 @router.post("/e/{slug}/ballot")
-def cast_ballot(
+async def cast_ballot(
     slug: str,
     request: Request,
     ballot_id: str = Form(""),
     round_id: str = Form(""),
     song_ids: list[str] = Form(default_factory=list),
 ):
-    # A plain function, so the database write runs on a worker thread and not
-    # on the event loop that every open stream shares.
     db = get_db(request)
     conn = db.read()
     event = events.by_slug(conn, slug)
@@ -189,10 +186,6 @@ async def stream(slug: str, request: Request):
     Individual votes do not, so a phone mid-ballot is never yanked out from
     under its owner.
     """
-    def current() -> tuple[int, int]:
-        conn = get_db(request).read()
-        event = events.by_slug(conn, slug)
-        return event.id, log.stamp(conn, event.id)
-
-    event_id, stamp = await run_in_threadpool(current)
-    return stream_response(event_topic(event_id), ready={"stamp": stamp})
+    conn = get_db(request).read()
+    event = events.by_slug(conn, slug)
+    return stream_response(event_topic(event.id), ready={"stamp": log.stamp(conn, event.id)})

@@ -7,12 +7,10 @@ GitHub repository at runtime.
 
 from __future__ import annotations
 
-import asyncio
 import html
 import logging
 from contextlib import asynccontextmanager
 
-import anyio.to_thread
 from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse, JSONResponse, PlainTextResponse
 from fastapi.staticfiles import StaticFiles
@@ -22,7 +20,6 @@ from .db import Database, applied_migrations
 from .domain.errors import DomainError, NotPermitted
 from .domain.identity import LoginThrottle
 from .web import admin, band, public
-from .web.hub import hub
 from .web.render import redirect
 from .web.security import Tokens
 
@@ -35,10 +32,6 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     @asynccontextmanager
     async def lifespan(app: FastAPI):
         version = app.state.db.migrate()
-        # Hand the hub the running loop so sync handlers, which execute in
-        # Starlette's threadpool, can wake SSE subscribers.
-        hub.bind(asyncio.get_running_loop())
-        anyio.to_thread.current_default_thread_limiter().total_tokens = settings.worker_threads
         log.info("jukebox ready: db=%s schema=v%s", settings.database_path, version)
         yield
         app.state.db.close()
@@ -88,11 +81,11 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
     # -------------------------------------------------------------- ops --
     @app.get("/healthz", include_in_schema=False)
-    def healthz():
+    async def healthz():
         return PlainTextResponse("ok")
 
     @app.get("/readyz", include_in_schema=False)
-    def readyz(request: Request):
+    async def readyz(request: Request):
         """Ready means: the database answers and the schema is current."""
         try:
             conn = request.app.state.db.read()

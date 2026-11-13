@@ -16,7 +16,6 @@ import asyncio
 import json
 from collections import defaultdict
 from collections.abc import AsyncIterator
-from contextlib import suppress
 
 from fastapi.responses import StreamingResponse
 
@@ -44,17 +43,7 @@ class _Subscriber:
 class Hub:
     def __init__(self) -> None:
         self._subscribers: dict[str, set[_Subscriber]] = defaultdict(set)
-        self._loop: asyncio.AbstractEventLoop | None = None
         self._version = 0
-
-    def bind(self, loop: asyncio.AbstractEventLoop) -> None:
-        """Remember the event loop, so sync request handlers can publish.
-
-        Endpoint functions that touch SQLite are sync and run in Starlette's
-        threadpool. Waking a queue from there has to hop back onto the loop
-        thread, which is what call_soon_threadsafe below does.
-        """
-        self._loop = loop
 
     @property
     def version(self) -> int:
@@ -70,12 +59,9 @@ class Hub:
         """
         self._version += 1
         message = json.dumps({"v": self._version, **payload}, ensure_ascii=False)
-        loop = self._loop
-        if loop is None:  # not running inside the app (tests, scripts)
-            self._deliver(topic, message)
-            return
-        with suppress(RuntimeError):  # loop closed during shutdown
-            loop.call_soon_threadsafe(self._deliver, topic, message)
+        # Handlers run on the event loop itself (docs/08, step 3), so the
+        # queues can be woken directly.
+        self._deliver(topic, message)
 
     def _deliver(self, topic: str, message: str) -> None:
         for subscriber in list(self._subscribers.get(topic, ())):

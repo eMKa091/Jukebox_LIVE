@@ -18,7 +18,6 @@ from zoneinfo import ZoneInfo
 import qrcode
 import qrcode.image.svg
 from fastapi import APIRouter, Form, Request, UploadFile
-from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import HTMLResponse, Response
 
 from ..domain import ballots, events, identity, log, rounds, songs
@@ -70,12 +69,12 @@ def _public_base(request: Request) -> str:
 
 # --------------------------------------------------------------- sign in --
 @router.get("/login", response_class=HTMLResponse)
-def login_form(request: Request):
+async def login_form(request: Request):
     return render(request, "admin/login.html")
 
 
 @router.post("/login")
-def login(request: Request, username: str = Form(...), password: str = Form(...)):
+async def login(request: Request, username: str = Form(...), password: str = Form(...)):
     try:
         user = identity.authenticate(
             get_db(request),
@@ -99,7 +98,7 @@ def login(request: Request, username: str = Form(...), password: str = Form(...)
 
 
 @router.post("/logout")
-def logout():
+async def logout():
     response = redirect("/admin/login", flash=("", "Signed out."))
     clear_session_cookie(response)
     return response
@@ -113,7 +112,7 @@ PAST_PAGE = 12
 
 
 @router.get("", response_class=HTMLResponse)
-def dashboard(request: Request, q: str = "", limit: int = PAST_PAGE):
+async def dashboard(request: Request, q: str = "", limit: int = PAST_PAGE):
     """Three groups, not one list: what is on air, what is coming, what is done.
 
     The old page put every event in one table ordered by date. That reads fine
@@ -161,7 +160,7 @@ def dashboard(request: Request, q: str = "", limit: int = PAST_PAGE):
 
 
 @router.get("/events/new", response_class=HTMLResponse)
-def new_event_form(request: Request):
+async def new_event_form(request: Request):
     """Its own page. On the dashboard this form was permanent clutter."""
     user = current_admin(request)
     conn = get_db(request).read()
@@ -178,7 +177,7 @@ def new_event_form(request: Request):
 
 
 @router.post("/events")
-def create_event(
+async def create_event(
     request: Request,
     name: str = Form(...),
     starts_at: str = Form(...),
@@ -291,7 +290,7 @@ def _console(request: Request, event_id: int, round_id: int | None):
 
 
 @router.get("/events/{event_id}", response_class=HTMLResponse)
-def event_console(
+async def event_console(
     request: Request,
     event_id: int,
     tab: str = "run",
@@ -365,7 +364,7 @@ def event_console(
 
 
 @router.get("/events/{event_id}/live", response_class=HTMLResponse)
-def event_live(event_id: int, request: Request, round: int | None = None):
+async def event_live(event_id: int, request: Request, round: int | None = None):
     """Re-rendered in place as votes land. No page reload, no lost scroll."""
     conn, context = _console(request, event_id, round)
     selected = context["selected"]
@@ -379,7 +378,7 @@ def event_live(event_id: int, request: Request, round: int | None = None):
 
 
 @router.post("/events/{event_id}/state")
-def event_state(event_id: int, request: Request, to: str = Form(...)):
+async def event_state(event_id: int, request: Request, to: str = Form(...)):
     user = current_admin(request)
     try:
         events.transition(get_db(request), event_id=event_id, to=to, actor=user)
@@ -391,7 +390,7 @@ def event_state(event_id: int, request: Request, to: str = Form(...)):
 
 
 @router.post("/events/{event_id}/rounds")
-def add_round(event_id: int, request: Request):
+async def add_round(event_id: int, request: Request):
     user = current_admin(request)
     try:
         rnd = rounds.add_round(get_db(request), event_id=event_id, actor=user)
@@ -404,7 +403,7 @@ def add_round(event_id: int, request: Request):
 
 
 @router.post("/events/{event_id}/notes")
-def save_notes(event_id: int, request: Request, body: str = Form("")):
+async def save_notes(event_id: int, request: Request, body: str = Form("")):
     user = current_admin(request)
     events.update_band_notes(get_db(request), event_id=event_id, body=body, actor=user)
     hub.publish(event_topic(event_id), kind="notes")
@@ -412,7 +411,7 @@ def save_notes(event_id: int, request: Request, body: str = Form("")):
 
 
 @router.post("/events/{event_id}/delete")
-def delete_event(event_id: int, request: Request):
+async def delete_event(event_id: int, request: Request):
     user = current_admin(request)
     try:
         events.delete(get_db(request), event_id=event_id, actor=user)
@@ -423,7 +422,7 @@ def delete_event(event_id: int, request: Request):
 
 # ---------------------------------------------------------------- rounds --
 @router.post("/rounds/{round_id}/state")
-def round_state(round_id: int, request: Request, to: str = Form(...), tab: str = Form("run")):
+async def round_state(round_id: int, request: Request, to: str = Form(...), tab: str = Form("run")):
     user = current_admin(request)
     db = get_db(request)
     rnd = rounds.get(db.read(), round_id)
@@ -439,7 +438,7 @@ def round_state(round_id: int, request: Request, to: str = Form(...), tab: str =
 
 
 @router.post("/rounds/{round_id}/max-votes")
-def round_max_votes(round_id: int, request: Request, max_votes: int = Form(...)):
+async def round_max_votes(round_id: int, request: Request, max_votes: int = Form(...)):
     user = current_admin(request)
     db = get_db(request)
     rnd = rounds.get(db.read(), round_id)
@@ -452,7 +451,7 @@ def round_max_votes(round_id: int, request: Request, max_votes: int = Form(...))
 
 
 @router.post("/rounds/{round_id}/carry-forward")
-def carry_forward(round_id: int, request: Request):
+async def carry_forward(round_id: int, request: Request):
     user = current_admin(request)
     db = get_db(request)
     rnd = rounds.get(db.read(), round_id)
@@ -465,7 +464,7 @@ def carry_forward(round_id: int, request: Request):
 
 
 @router.post("/rounds/{round_id}/songs")
-def round_songs(
+async def round_songs(
     round_id: int,
     request: Request,
     action: str = Form(""),
@@ -528,7 +527,7 @@ def round_songs(
 
 # ----------------------------------------------------------------- songs --
 @router.get("/songs", response_class=HTMLResponse)
-def song_list(request: Request, q: str = "", show: str = "active"):
+async def song_list(request: Request, q: str = "", show: str = "active"):
     """The master list, searchable.
 
     The catalogue is several hundred songs, not the hundred-odd in the sample
@@ -583,7 +582,7 @@ def _live_round_link(request: Request) -> tuple[str, str] | None:
 
 
 @router.post("/songs")
-def add_song(request: Request, title: str = Form(...), artist: str = Form(...)):
+async def add_song(request: Request, title: str = Form(...), artist: str = Form(...)):
     user = current_admin(request)
     try:
         songs.add(get_db(request), title=title, artist=artist, actor=user)
@@ -600,7 +599,7 @@ def add_song(request: Request, title: str = Form(...), artist: str = Form(...)):
 
 
 @router.post("/songs/import")
-def import_songs(request: Request, file: UploadFile):
+async def import_songs(request: Request, file: UploadFile):
     user = current_admin(request)
     raw = file.file.read()
     try:
@@ -627,21 +626,21 @@ def import_songs(request: Request, file: UploadFile):
 
 
 @router.post("/songs/{song_id}/retire")
-def retire_song(song_id: int, request: Request):
+async def retire_song(song_id: int, request: Request):
     user = current_admin(request)
     songs.set_retired(get_db(request), song_id=song_id, retired=True, actor=user)
     return redirect("/admin/songs")
 
 
 @router.post("/songs/{song_id}/restore")
-def restore_song(song_id: int, request: Request):
+async def restore_song(song_id: int, request: Request):
     user = current_admin(request)
     songs.set_retired(get_db(request), song_id=song_id, retired=False, actor=user)
     return redirect("/admin/songs")
 
 
 @router.get("/songs/export.csv")
-def export_songs(request: Request):
+async def export_songs(request: Request):
     current_admin(request)
     rows = songs.list_songs(get_db(request).read(), include_retired=True)
     return _csv(
@@ -679,7 +678,7 @@ def _csv(filename: str, header: list[str], rows: list[list]) -> Response:
 
 
 @router.get("/events/{event_id}/export.csv")
-def export_votes(event_id: int, request: Request):
+async def export_votes(event_id: int, request: Request):
     current_admin(request)
     conn = get_db(request).read()
     event = events.get(conn, event_id)
@@ -700,7 +699,7 @@ def export_votes(event_id: int, request: Request):
 
 
 @router.get("/events/{event_id}/results.csv")
-def export_results(event_id: int, request: Request):
+async def export_results(event_id: int, request: Request):
     current_admin(request)
     conn = get_db(request).read()
     event = events.get(conn, event_id)
@@ -713,7 +712,7 @@ def export_results(event_id: int, request: Request):
 
 
 @router.get("/events/{event_id}/qr.svg")
-def event_qr(event_id: int, request: Request):
+async def event_qr(event_id: int, request: Request):
     """The QR code for the table cards. Nobody types a URL in the dark."""
     current_admin(request)
     event = events.get(get_db(request).read(), event_id)
@@ -727,5 +726,5 @@ def event_qr(event_id: int, request: Request):
 @router.get("/events/{event_id}/stream")
 async def admin_stream(event_id: int, request: Request):
     current_admin(request)
-    stamp = await run_in_threadpool(lambda: log.stamp(get_db(request).read(), event_id))
+    stamp = log.stamp(get_db(request).read(), event_id)
     return stream_response(event_topic(event_id), votes_topic(event_id), ready={"stamp": stamp})
