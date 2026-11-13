@@ -90,7 +90,6 @@ def test_the_header_is_the_same_on_every_tab(admin_client, db, open_round):
         page = admin_client.get(f"/admin/events/{open_round.event_id}?tab={tab}").text
         assert "Round 1" in page, tab          # the round strip
         assert "voters" in page, tab           # the live counts
-        assert "screens" in page, tab
 
 
 def test_the_console_opens_on_the_round_that_matters(admin_client, db, live_event):

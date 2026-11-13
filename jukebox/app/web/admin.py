@@ -327,7 +327,6 @@ def _console(request: Request, event_id: int, round_id: int | None):
             for r in all_rounds
         ],
         "event_stats": ballots.event_stats(conn, event_id),
-        "listeners": get_hub(request).subscriber_count(event_topic(event_id)),
         # Surfaced on the tab itself, so a song added to the master list
         # mid-gig is visible without opening the tab to look for it.
         "missing_count": len(rounds.songs_not_in_round(conn, selected.id)),
@@ -417,7 +416,6 @@ async def event_live(event_id: int, request: Request, round: int | None = None):
         "admin/_live.html",
         tally=ballots.tally(conn, selected.id),
         stats=ballots.round_stats(conn, selected.id),
-        listeners=context["listeners"],
         selected=selected,
     )
 

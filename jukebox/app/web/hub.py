@@ -80,9 +80,6 @@ class Hub:
     def ready(self, subscription: Subscription) -> str:
         return message("ready", v=self._version, **subscription.ready)
 
-    def subscriber_count(self, topic: str) -> int:
-        raise NotImplementedError
-
     def _send(self, topic: str, text: str) -> None:
         raise NotImplementedError
 
@@ -163,6 +160,7 @@ class LocalHub(Hub):
                 await ws.close()
 
     def subscriber_count(self, topic: str) -> int:
+        """How many sockets hear `topic`; the tests use it to see one leave."""
         return len(self._subscribers.get(topic, ()))
 
 
@@ -183,9 +181,6 @@ class SocketHub(Hub):
         for ws in self._ctx.getWebSockets(topic):
             with suppress(Exception):  # a socket closing as we send
                 ws.send(text)
-
-    def subscriber_count(self, topic: str) -> int:
-        return len(self._ctx.getWebSockets(topic))
 
 
 # ---------------------------------------------------------------- routes --
