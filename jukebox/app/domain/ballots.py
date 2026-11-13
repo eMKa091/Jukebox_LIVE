@@ -15,11 +15,12 @@ Two properties matter here and neither existed before:
 from __future__ import annotations
 
 import sqlite3
+import uuid
 from dataclasses import dataclass
 
 from ..db import Database, utcnow
 from . import rounds
-from .errors import Conflict, Invalid, NotFound
+from .errors import Conflict, Invalid
 
 
 @dataclass(frozen=True)
@@ -58,8 +59,6 @@ def voter_for_device(
                 (display_name, row["id"]),
             )
             return row["id"]
-        import uuid
-
         voter_id = uuid.uuid4().hex
         conn.execute(
             "INSERT INTO voters (id, event_id, display_name, device_token, created_at)"
@@ -108,6 +107,13 @@ def submit(
 
     with db.write() as conn:
         rnd = rounds.get(conn, round_id)
+
+        # A voter belongs to one event and votes only in that event's rounds.
+        # Without this a phone that had ever joined another event held a
+        # second identity, and with it a second ballot in the live round.
+        voter = conn.execute("SELECT event_id FROM voters WHERE id = ?", (voter_id,)).fetchone()
+        if voter is None or voter["event_id"] != rnd.event_id:
+            raise Invalid("Neplatný formulář, zkus to prosím znovu.")
 
         existing = conn.execute(
             "SELECT song_id, ballot_id FROM votes WHERE round_id = ? AND voter_id = ?",
@@ -163,8 +169,9 @@ def titles(conn: sqlite3.Connection, song_ids: list[int]) -> list[str]:
 def tally(conn: sqlite3.Connection, round_id: int) -> list[dict]:
     """Ranked results for one round.
 
-    Only songs still available are ranked; a song the band has already played
-    drops out rather than sitting at the top of the list with nowhere to go.
+    Only songs still available are ranked -- exactly the songs the ballot
+    offers. A song the band has already played drops out rather than sitting
+    at the top of the list with nowhere to go.
     Ties keep the same rank, so two songs on nine votes are both rank 1.
     """
     rows = conn.execute(
@@ -172,7 +179,8 @@ def tally(conn: sqlite3.Connection, round_id: int) -> list[dict]:
         " FROM round_songs rs"
         " JOIN songs s ON s.id = rs.song_id"
         " LEFT JOIN votes v ON v.song_id = s.id AND v.round_id = rs.round_id"
-        " WHERE rs.round_id = ? AND rs.excluded = 0 AND rs.played_at IS NULL"
+        f" WHERE rs.round_id = ? AND rs.excluded = 0 AND NOT {rounds.PLAYED_IN_EVENT}"
+        "   AND s.retired_at IS NULL"
         " GROUP BY s.id, s.title, s.artist"
         " ORDER BY votes DESC, s.artist COLLATE NOCASE, s.title COLLATE NOCASE",
         (round_id,),

@@ -55,6 +55,20 @@ class Tokens:
             return None
 
 
+def client_address(request: Request) -> str:
+    """Who is on the other end, as well as it can be known behind proxies.
+
+    Cloudflare and Fly each name the caller in a header of their own, which a
+    visitor cannot set when the request really came through them. The socket
+    address is the fallback for local runs.
+    """
+    for header in ("cf-connecting-ip", "fly-client-ip"):
+        value = request.headers.get(header, "").strip()
+        if value:
+            return value[:64]
+    return request.client.host if request.client else "unknown"
+
+
 def device_token(request: Request) -> str:
     """This browser's token, from the cookie or freshly minted.
 

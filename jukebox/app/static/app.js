@@ -3,7 +3,8 @@
  * Three jobs, and deliberately nothing else:
  *   1. enforce the vote limit visibly (dim, never hide);
  *   2. survive a reload without losing a half-made selection;
- *   3. reconnect the live stream when venue wifi drops.
+ *   3. reconnect the live stream when venue wifi drops, and notice what was
+ *      missed while it was down.
  *
  * There is no client-side copy of the application state. The server renders
  * every fragment; the stream only says "something changed, re-fetch".
@@ -62,10 +63,17 @@
 
     boxes.forEach(function (b) { b.addEventListener("change", sync); });
 
-    // Clear the saved draft once the ballot is actually on its way.
+    // The draft is NOT cleared here. On venue wifi the submit can fail, and a
+    // draft cleared on the way out is a selection lost at the worst moment.
+    // The receipt page clears it, once the server has counted the ballot.
     form.addEventListener("submit", function () {
-      try { sessionStorage.removeItem(roundKey); } catch (e) {}
       if (submit) { submit.disabled = true; submit.textContent = "Odesílám…"; }
+    });
+
+    // Back from the browser's page cache after a submit that went nowhere:
+    // the button must work again.
+    window.addEventListener("pageshow", function (ev) {
+      if (ev.persisted && submit) { submit.textContent = "Odeslat hlasy"; sync(); }
     });
 
     /* Search filters in place. It does not unmount rows, so a ticked song
@@ -97,16 +105,47 @@
   }
 
   /* ---------------------------------------------------------- stream ---- */
-  /* Reconnection is EventSource's own job; this wrapper exists only to reload
-     the page when the round state changes underneath the viewer. */
-  function initStream(url) {
+  /* The stream says "something changed"; the page it is on carries the stamp
+     it was rendered from. Every time the stream (re)connects the server names
+     the current stamp. If the two differ, this page slept through a change --
+     a locked phone, a dead spot in the hall, a restarted server -- and is
+     fetched again. Without that check a phone locked between rounds went on
+     promising "this page will refresh itself" for the rest of the night. */
+  function initStream(el) {
+    var url = el.dataset.stream;
+    var stamp = el.dataset.stamp;
+    var jitter = parseInt(el.dataset.jitter, 10) || 0;
     var source;
     var retry = 1000;
+    var connected = 0;        // how many times the stream has come up
+    var reloading = false;
+    var hiddenAt = 0;
+
+    // Five hundred phones are told to reload in the same instant. Each waits
+    // a random moment first, so the server sees a few seconds of traffic
+    // rather than one wall of it. Screens without data-jitter go at once.
+    function reload() {
+      if (reloading) return;
+      reloading = true;
+      if (source) source.close();
+      setTimeout(function () { window.location.reload(); }, Math.random() * jitter);
+    }
 
     function connect() {
       source = new EventSource(url);
 
-      source.addEventListener("ready", function () { retry = 1000; });
+      source.addEventListener("ready", function (ev) {
+        retry = 1000;
+        connected += 1;
+        var data = {};
+        try { data = JSON.parse(ev.data); } catch (e) {}
+        if (stamp !== undefined && data.stamp !== undefined && String(data.stamp) !== stamp) {
+          reload();
+          return;
+        }
+        // Same event state, but votes may have landed while we were away.
+        if (connected > 1) refreshAll();
+      });
 
       source.addEventListener("update", function (ev) {
         var data = {};
@@ -114,7 +153,7 @@
         // A change to what the round *is* reloads the page, because the whole
         // shape of it differs between open, closed and not-yet-started.
         if (data.reload) {
-          window.location.reload();
+          reload();
           return;
         }
         // Anything else (votes arriving from other phones) just re-renders
@@ -124,10 +163,20 @@
 
       source.addEventListener("error", function () {
         source.close();
+        if (reloading) return;
         retry = Math.min(retry * 2, 15000);
         setTimeout(connect, retry);
       });
     }
+
+    // A phone coming back from the lock screen may hold a connection that is
+    // dead without knowing it. Do not wait for it to find out: ask again.
+    document.addEventListener("visibilitychange", function () {
+      if (document.hidden) { hiddenAt = Date.now(); return; }
+      if (reloading || !hiddenAt || Date.now() - hiddenAt < 5000) return;
+      source.close();
+      connect();
+    });
 
     connect();
   }
@@ -137,7 +186,20 @@
     var form = document.getElementById("ballot");
     if (form) initBallot(form);
 
+    var voted = document.querySelector("[data-voted-round]");
+    if (voted) {
+      try { sessionStorage.removeItem("jb.ballot." + voted.dataset.votedRound); } catch (e) {}
+    }
+
     var streamEl = document.querySelector("[data-stream]");
-    if (streamEl && window.EventSource) initStream(streamEl.dataset.stream);
+    if (streamEl && window.EventSource) initStream(streamEl);
+  });
+
+  /* --------------------------------------------------------- confirm ---- */
+  /* <form data-confirm="..."> asks before it submits. The question is read
+     from the attribute as text, so no name can break out of it. */
+  document.addEventListener("submit", function (ev) {
+    var question = ev.target.dataset && ev.target.dataset.confirm;
+    if (question && !window.confirm(question)) ev.preventDefault();
   });
 })();

@@ -2,7 +2,7 @@
 {% block title %}{{ event.name }} — Jukebox LIVE{% endblock %}
 {% block content %}
 
-<div data-stream="/admin/events/{{ event.id }}/stream" hidden></div>
+<div data-stream="/admin/events/{{ event.id }}/stream" data-stamp="{{ stamp }}" hidden></div>
 
 <p class="meta" style="margin:20px 0 0"><a href="/admin">← Events</a></p>
 

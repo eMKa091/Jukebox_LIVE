@@ -35,6 +35,21 @@ def record(
     )
 
 
+def stamp(conn: sqlite3.Connection, event_id: int) -> int:
+    """A number that changes whenever anything about an event changes.
+
+    Every transition and every change to a round's songs writes a row here, so
+    the newest row's id is a version of the event that survives a restart. A
+    page carries the stamp it was rendered with; the live stream reports the
+    current one on every (re)connect; a browser that sees them differ knows it
+    slept through something and fetches the page again.
+    """
+    row = conn.execute(
+        "SELECT COALESCE(MAX(id), 0) FROM event_log WHERE event_id = ?", (event_id,)
+    ).fetchone()
+    return int(row[0])
+
+
 def for_event(conn: sqlite3.Connection, event_id: int, limit: int = 200) -> list[dict]:
     rows = conn.execute(
         "SELECT at, actor, action, payload FROM event_log"

@@ -24,6 +24,18 @@ ALLOWED: dict[str, set[str]] = {
     "closed": {"open"},  # reopening a round is allowed, and logged
 }
 
+# "Played" is a fact about the evening, not about one round. Once the band has
+# played a song it is off every ballot of that event, whichever round it was
+# ticked in and whether or not a later round had already been filled. Reading
+# it per round made the result depend on the order of two buttons.
+#
+# A condition on a `round_songs` row aliased `rs`.
+PLAYED_IN_EVENT = (
+    "EXISTS (SELECT 1 FROM round_songs p JOIN rounds pr ON pr.id = p.round_id"
+    " WHERE pr.event_id = (SELECT event_id FROM rounds WHERE id = rs.round_id)"
+    " AND p.song_id = rs.song_id AND p.played_at IS NOT NULL)"
+)
+
 
 @dataclass(frozen=True)
 class Round:
@@ -214,17 +226,24 @@ def assign_all_songs(db: Database, *, round_id: int, actor: str) -> int:
 def songs_not_in_round(conn: sqlite3.Connection, round_id: int) -> list[sqlite3.Row]:
     """Master songs this round does not offer at all.
 
-    A round owns its own list, which is what makes per-round exclusion and
-    "played" work. The cost is that a song added to the master list after the
-    round was built belongs to no round, so it cannot be voted on and nothing
-    says why. This query is the gap, and the admin console shows it.
+    A round owns its own list, which is what makes per-round exclusion work.
+    The cost is that a song added to the master list after the round was built
+    belongs to no round, so it cannot be voted on and nothing says why. This
+    query is the gap, and the admin console shows it.
+
+    Songs already played at this event are not part of the gap: they are
+    finished for the night, not missing.
     """
     return conn.execute(
         "SELECT s.id, s.title, s.artist FROM songs s"
         " WHERE s.retired_at IS NULL"
         "   AND s.id NOT IN (SELECT song_id FROM round_songs WHERE round_id = ?)"
+        "   AND s.id NOT IN ("
+        "       SELECT p.song_id FROM round_songs p JOIN rounds pr ON pr.id = p.round_id"
+        "        WHERE pr.event_id = (SELECT event_id FROM rounds WHERE id = ?)"
+        "          AND p.played_at IS NOT NULL)"
         " ORDER BY s.artist COLLATE NOCASE, s.title COLLATE NOCASE",
-        (round_id,),
+        (round_id, round_id),
     ).fetchall()
 
 
@@ -308,8 +327,12 @@ def set_played(db: Database, *, round_id: int, song_ids: list[int], played: bool
     """Mark songs the band actually played.
 
     A played song does not come back in later rounds -- that is the whole
-    feature. Note there is exactly one function with this name in the codebase;
-    the legacy version had two with different signatures writing to different
+    feature, and it holds for the whole event (see PLAYED_IN_EVENT). The mark
+    is written on this round's row; un-marking clears it on every round of the
+    event, so it can be undone from whichever round the admin is looking at.
+
+    Note there is exactly one function with this name in the codebase; the
+    legacy version had two with different signatures writing to different
     tables, and which one ran depended on import order (F11).
     """
     if not song_ids:
@@ -317,11 +340,19 @@ def set_played(db: Database, *, round_id: int, song_ids: list[int], played: bool
     with db.write() as conn:
         rnd = get(conn, round_id)
         placeholders = ",".join("?" * len(song_ids))
-        cur = conn.execute(
-            f"UPDATE round_songs SET played_at = ? WHERE round_id = ?"
-            f" AND song_id IN ({placeholders})",
-            (utcnow() if played else None, round_id, *song_ids),
-        )
+        if played:
+            cur = conn.execute(
+                f"UPDATE round_songs SET played_at = ? WHERE round_id = ?"
+                f" AND song_id IN ({placeholders})",
+                (utcnow(), round_id, *song_ids),
+            )
+        else:
+            cur = conn.execute(
+                f"UPDATE round_songs SET played_at = NULL"
+                f" WHERE played_at IS NOT NULL AND song_id IN ({placeholders})"
+                f" AND round_id IN (SELECT id FROM rounds WHERE event_id = ?)",
+                (*song_ids, rnd.event_id),
+            )
         log.record(
             conn,
             actor=actor,
@@ -343,7 +374,7 @@ def _carry_forward(conn: sqlite3.Connection, *, from_round: int, to_round: int) 
         "INSERT INTO round_songs (round_id, song_id)"
         " SELECT ?, rs.song_id FROM round_songs rs"
         " JOIN songs s ON s.id = rs.song_id"
-        " WHERE rs.round_id = ? AND rs.excluded = 0 AND rs.played_at IS NULL"
+        f" WHERE rs.round_id = ? AND rs.excluded = 0 AND NOT {PLAYED_IN_EVENT}"
         "   AND s.retired_at IS NULL"
         " ON CONFLICT (round_id, song_id) DO NOTHING",
         (to_round, from_round),
@@ -378,7 +409,7 @@ def votable_songs(conn: sqlite3.Connection, round_id: int) -> list[sqlite3.Row]:
     return conn.execute(
         "SELECT s.id, s.title, s.artist FROM round_songs rs"
         " JOIN songs s ON s.id = rs.song_id"
-        " WHERE rs.round_id = ? AND rs.excluded = 0 AND rs.played_at IS NULL"
+        f" WHERE rs.round_id = ? AND rs.excluded = 0 AND NOT {PLAYED_IN_EVENT}"
         "   AND s.retired_at IS NULL"
         " ORDER BY s.artist COLLATE NOCASE, s.title COLLATE NOCASE",
         (round_id,),
@@ -388,7 +419,7 @@ def votable_songs(conn: sqlite3.Connection, round_id: int) -> list[sqlite3.Row]:
 def song_board(conn: sqlite3.Connection, round_id: int) -> list[dict]:
     """Every song in the round with its status, for the admin console."""
     rows = conn.execute(
-        "SELECT s.id, s.title, s.artist, rs.excluded, rs.played_at,"
+        f"SELECT s.id, s.title, s.artist, rs.excluded, {PLAYED_IN_EVENT} AS played,"
         "       (SELECT COUNT(*) FROM votes v"
         "         WHERE v.round_id = rs.round_id AND v.song_id = s.id) AS votes"
         " FROM round_songs rs JOIN songs s ON s.id = rs.song_id"
@@ -402,9 +433,9 @@ def song_board(conn: sqlite3.Connection, round_id: int) -> list[dict]:
             "title": r["title"],
             "artist": r["artist"],
             "excluded": bool(r["excluded"]),
-            "played": r["played_at"] is not None,
+            "played": bool(r["played"]),
             "votes": r["votes"],
-            "status": "played" if r["played_at"] else ("excluded" if r["excluded"] else "open"),
+            "status": "played" if r["played"] else ("excluded" if r["excluded"] else "open"),
         }
         for r in rows
     ]

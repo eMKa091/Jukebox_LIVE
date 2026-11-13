@@ -2,7 +2,9 @@
 {% block title %}{{ event.name }}{% endblock %}
 {% block content %}
 
-<div data-stream="/e/{{ event.slug }}/stream" hidden></div>
+{# data-jitter: every phone in the room is told to reload in the same instant;
+   each waits a random part of this many milliseconds first. #}
+<div data-stream="/e/{{ event.slug }}/stream" data-stamp="{{ stamp }}" data-jitter="3000" hidden></div>
 
 <h1>{{ heading }}</h1>
 <p class="lead">{{ message }}</p>

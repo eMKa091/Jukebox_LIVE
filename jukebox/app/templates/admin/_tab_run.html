@@ -18,24 +18,37 @@
   {% endfor %}
 </div>
 {% else %}
+{# The button follows the evening, not the round that happens to be selected:
+   stop the round that is open, else start the next one that has not run.
+   Reopening a finished round is possible and deliberately the quiet button --
+   it used to be the big one the moment round 1 closed. #}
 <div class="bigaction hot">
   <div class="grow">
     <h3><span class="livedot"><i></i> On air</span></h3>
     <p>
-      {% if selected.state == 'open' %}Round {{ selected.ordinal }} is taking votes right now.
-      {% else %}Nobody can vote until you open a round.{% endif %}
+      {% if open_round %}Round {{ open_round.ordinal }} is taking votes right now.
+      {% elif next_pending %}Nobody can vote until you start round {{ next_pending.ordinal }}.
+      {% else %}Every round has run. Add a round to keep going.{% endif %}
     </p>
   </div>
-  {% if selected.state == 'open' %}
-    <form method="post" action="/admin/rounds/{{ selected.id }}/state" style="margin:0">
+  {% if open_round %}
+    <form method="post" action="/admin/rounds/{{ open_round.id }}/state" style="margin:0">
       <input type="hidden" name="to" value="closed"><input type="hidden" name="tab" value="run">
       <button class="btn danger" type="submit">Stop voting</button>
     </form>
   {% else %}
+    {% if next_pending %}
+    <form method="post" action="/admin/rounds/{{ next_pending.id }}/state" style="margin:0">
+      <input type="hidden" name="to" value="open"><input type="hidden" name="tab" value="run">
+      <button class="btn" type="submit">Start round {{ next_pending.ordinal }}</button>
+    </form>
+    {% endif %}
+    {% if selected.state == 'closed' %}
     <form method="post" action="/admin/rounds/{{ selected.id }}/state" style="margin:0">
       <input type="hidden" name="to" value="open"><input type="hidden" name="tab" value="run">
-      <button class="btn" type="submit">Start round {{ selected.ordinal }}</button>
+      <button class="btn ghost sm" type="submit">Reopen round {{ selected.ordinal }}</button>
     </form>
+    {% endif %}
   {% endif %}
 </div>
 

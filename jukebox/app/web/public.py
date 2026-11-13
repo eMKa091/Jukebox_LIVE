@@ -15,12 +15,13 @@ on refresh (F6).
 from __future__ import annotations
 
 from fastapi import APIRouter, Form, Request
-from fastapi.responses import HTMLResponse, StreamingResponse
+from fastapi.concurrency import run_in_threadpool
+from fastapi.responses import HTMLResponse
 
-from ..domain import ballots, events, rounds, songs
+from ..domain import ballots, events, log, rounds, songs
 from ..domain.errors import DomainError
 from .deps import get_db, get_settings
-from .hub import event_topic, hub
+from .hub import event_topic, hub, stream_response, votes_topic
 from .render import redirect, render
 from .security import device_token, ensure_device_cookie
 
@@ -63,6 +64,8 @@ def event_page(slug: str, request: Request):
     token = device_token(request)
     voter = ballots.voter_in_event(conn, event_id=event.id, device_token=token)
     open_round = rounds.open_round_of(conn, event.id)
+    # What the page was rendered from. The stream compares it on reconnect.
+    stamp = log.stamp(conn, event.id)
 
     if voter is None:
         response = render(request, "join.html", event=event, display_name=None)
@@ -79,6 +82,7 @@ def event_page(slug: str, request: Request):
             heading="Kolo právě skončilo",
             message="Kapela teď hraje. Další kolo otevřeme za chvíli.",
             tally=ballots.tally(conn, last[-1].id)[:10] if last else [],
+            stamp=stamp,
         )
         ensure_device_cookie(response, token, secure=settings.secure_cookies)
         return response
@@ -92,6 +96,7 @@ def event_page(slug: str, request: Request):
             round=open_round,
             voter_name=voter["display_name"],
             songs=ballots.titles(conn, already),
+            stamp=stamp,
         )
     else:
         response = render(
@@ -101,6 +106,7 @@ def event_page(slug: str, request: Request):
             round=open_round,
             voter_name=voter["display_name"],
             songs=rounds.votable_songs(conn, open_round.id),
+            stamp=stamp,
         )
     ensure_device_cookie(response, token, secure=settings.secure_cookies)
     return response
@@ -112,6 +118,12 @@ def join(slug: str, request: Request, display_name: str = Form(...)):
     settings = get_settings(request)
     event = events.by_slug(db.read(), slug)
     token = device_token(request)
+
+    if event.state != "live":
+        # Nobody joins an event that is not on air. Besides being pointless, a
+        # voter record in some other event was a second identity for the same
+        # phone, and so a second ballot in the live one.
+        return redirect(f"/e/{slug}")
 
     try:
         ballots.voter_for_device(
@@ -128,16 +140,22 @@ def join(slug: str, request: Request, display_name: str = Form(...)):
 
 
 @router.post("/e/{slug}/ballot")
-async def cast_ballot(slug: str, request: Request):
+def cast_ballot(
+    slug: str,
+    request: Request,
+    ballot_id: str = Form(""),
+    round_id: str = Form(""),
+    song_ids: list[str] = Form(default_factory=list),
+):
+    # A plain function, so the database write runs on a worker thread and not
+    # on the event loop that every open stream shares.
     db = get_db(request)
     conn = db.read()
     event = events.by_slug(conn, slug)
 
-    form = await request.form()
-    ballot_id = str(form.get("ballot_id") or "")
     try:
-        round_id = int(form.get("round_id") or 0)
-        song_ids = [int(v) for v in form.getlist("song_ids")]
+        round_id = int(round_id or 0)
+        song_ids = [int(v) for v in song_ids]
     except ValueError:
         return redirect(f"/e/{slug}", flash=("bad", "Neplatný formulář, zkus to prosím znovu."))
 
@@ -159,7 +177,7 @@ async def cast_ballot(slug: str, request: Request):
 
     # Tell the band's display and the admin console, not the other attendees:
     # a vote count changing under someone's ballot is noise.
-    hub.publish(event_topic(event.id), kind="votes")
+    hub.publish(votes_topic(event.id), kind="votes")
     return redirect(f"/e/{slug}")
 
 
@@ -167,16 +185,14 @@ async def cast_ballot(slug: str, request: Request):
 async def stream(slug: str, request: Request):
     """Live updates for attendees.
 
-    Only round transitions reach this stream with reload=True; individual votes
-    do not, so a phone mid-ballot is never yanked out from under its owner.
+    Only changes to the event itself arrive here, each asking for a reload.
+    Individual votes do not, so a phone mid-ballot is never yanked out from
+    under its owner.
     """
-    event = events.by_slug(get_db(request).read(), slug)
-    return StreamingResponse(
-        hub.stream(event_topic(event.id)),
-        media_type="text/event-stream",
-        headers={
-            "Cache-Control": "no-cache, no-transform",
-            "X-Accel-Buffering": "no",
-            "Connection": "keep-alive",
-        },
-    )
+    def current() -> tuple[int, int]:
+        conn = get_db(request).read()
+        event = events.by_slug(conn, slug)
+        return event.id, log.stamp(conn, event.id)
+
+    event_id, stamp = await run_in_threadpool(current)
+    return stream_response(event_topic(event_id), ready={"stamp": stamp})

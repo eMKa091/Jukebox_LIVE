@@ -13,18 +13,20 @@ import csv
 import io
 from datetime import datetime, timezone
 from urllib.parse import quote
+from zoneinfo import ZoneInfo
 
 import qrcode
 import qrcode.image.svg
 from fastapi import APIRouter, Form, Request, UploadFile
-from fastapi.responses import HTMLResponse, PlainTextResponse, Response, StreamingResponse
+from fastapi.concurrency import run_in_threadpool
+from fastapi.responses import HTMLResponse, Response
 
 from ..domain import ballots, events, identity, log, rounds, songs
 from ..domain.errors import DomainError, NotPermitted
 from .deps import get_db, get_settings, get_throttle, get_tokens
-from .hub import event_topic, hub
+from .hub import event_topic, hub, stream_response, votes_topic
 from .render import fragment, redirect, render
-from .security import SESSION_COOKIE, clear_session_cookie, set_session_cookie
+from .security import SESSION_COOKIE, clear_session_cookie, client_address, set_session_cookie
 
 router = APIRouter(prefix="/admin")
 
@@ -45,13 +47,25 @@ def current_admin(request: Request) -> str:
     return user
 
 
-def _local(iso: str) -> str:
+def _zone(request: Request) -> ZoneInfo:
+    """The band's zone, from settings. Never the machine's: the container
+    runs in UTC, and 20:00 typed in Ostrava was being stored as 20:00 UTC."""
+    return ZoneInfo(get_settings(request).timezone)
+
+
+def _local(iso: str, zone: ZoneInfo) -> str:
     """Render a UTC timestamp in the band's timezone, for people to read."""
     try:
         dt = datetime.fromisoformat(iso.replace("Z", "+00:00"))
     except ValueError:
         return iso
-    return dt.astimezone().strftime("%a %d %b %Y, %H:%M")
+    return dt.astimezone(zone).strftime("%a %d %b %Y, %H:%M")
+
+
+def _public_base(request: Request) -> str:
+    """Where the audience reaches the app: the configured address if there is
+    one, else the address this request arrived on."""
+    return get_settings(request).public_url or str(request.base_url).rstrip("/")
 
 
 # --------------------------------------------------------------- sign in --
@@ -68,6 +82,7 @@ def login(request: Request, username: str = Form(...), password: str = Form(...)
             username=username,
             password=password,
             throttle=get_throttle(request),
+            client=client_address(request),
         )
     except DomainError as exc:
         return redirect("/admin/login", flash=("bad", str(exc)))
@@ -106,12 +121,13 @@ def dashboard(request: Request, q: str = "", limit: int = PAST_PAGE):
     """
     user = current_admin(request)
     conn = get_db(request).read()
+    zone = _zone(request)
 
     def decorate(event):
         return {
             "event": event,
             "stats": ballots.event_stats(conn, event.id),
-            "starts_local": _local(event.starts_at),
+            "starts_local": _local(event.starts_at, zone),
             "rounds": rounds.for_event(conn, event.id),
         }
 
@@ -155,7 +171,8 @@ def new_event_form(request: Request):
         nav="events",
         admin_user=user,
         song_count=len(songs.list_songs(conn)),
-        default_start=datetime.now().replace(hour=20, minute=0, second=0, microsecond=0)
+        default_start=datetime.now(_zone(request))
+        .replace(hour=20, minute=0, second=0, microsecond=0)
         .strftime("%Y-%m-%dT%H:%M"),
     )
 
@@ -171,11 +188,11 @@ def create_event(
 ):
     user = current_admin(request)
     db = get_db(request)
-    # The browser sends local wall-clock time with no zone; interpret it in the
-    # server's zone and store UTC.
+    # The browser sends local wall-clock time with no zone; read it in the
+    # band's zone and store UTC.
     try:
-        local = datetime.fromisoformat(starts_at)
-        iso = local.astimezone().astimezone(timezone.utc).isoformat().replace("+00:00", "Z")
+        local = datetime.fromisoformat(starts_at).replace(tzinfo=_zone(request))
+        iso = local.astimezone(timezone.utc).isoformat().replace("+00:00", "Z")
     except ValueError:
         return redirect("/admin/events/new", flash=("bad", "That start time is not valid."))
 
@@ -246,7 +263,13 @@ def _console(request: Request, event_id: int, round_id: int | None):
         "nav": "events",
         "admin_user": admin_user,
         "event": event,
-        "starts_local": _local(event.starts_at),
+        "stamp": log.stamp(conn, event_id),
+        # The Run tab's one prominent button is built from these two, not from
+        # whichever round happens to be selected: stop what is open, or start
+        # what comes next.
+        "open_round": next((r for r in all_rounds if r.state == "open"), None),
+        "next_pending": next((r for r in all_rounds if r.state == "pending"), None),
+        "starts_local": _local(event.starts_at, _zone(request)),
         "transitions": TRANSITION_BUTTONS[event.state],
         "tabs": TABS,
         "selected": selected,
@@ -327,7 +350,7 @@ def event_console(
         }
 
     elif tab == "share":
-        base = str(request.base_url).rstrip("/")
+        base = _public_base(request)
         context |= {
             "public_url": f"{base}/e/{event.slug}",
             "band_url": f"{base}/band/{get_tokens(request).make_band_token(event_id)}",
@@ -442,19 +465,23 @@ def carry_forward(round_id: int, request: Request):
 
 
 @router.post("/rounds/{round_id}/songs")
-async def round_songs(round_id: int, request: Request):
+def round_songs(
+    round_id: int,
+    request: Request,
+    action: str = Form(""),
+    song_ids: list[int] = Form(default_factory=list),
+    filter: str = Form("available"),
+    q: str = Form(""),
+):
     user = current_admin(request)
     db = get_db(request)
     rnd = rounds.get(db.read(), round_id)
-    form = await request.form()
-    action = form.get("action")
-    song_ids = [int(v) for v in form.getlist("song_ids")]
     # Return to exactly the view the action was fired from -- same tab, same
     # filter, same search -- so a bulk edit does not throw away where you were.
     back = (
         f"/admin/events/{rnd.event_id}?tab=songs&round={round_id}"
-        f"&filter={form.get('filter') or 'available'}"
-        f"&q={quote(str(form.get('q') or ''))}"
+        f"&filter={quote(filter or 'available')}"
+        f"&q={quote(q)}"
     )
 
     if action == "add_all":
@@ -573,9 +600,9 @@ def add_song(request: Request, title: str = Form(...), artist: str = Form(...)):
 
 
 @router.post("/songs/import")
-async def import_songs(request: Request, file: UploadFile):
+def import_songs(request: Request, file: UploadFile):
     user = current_admin(request)
-    raw = await file.read()
+    raw = file.file.read()
     try:
         report = songs.import_csv(get_db(request), raw, actor=user)
     except DomainError as exc:
@@ -625,11 +652,23 @@ def export_songs(request: Request):
 
 
 # --------------------------------------------------------------- exports --
+def _plain(cell):
+    """Keep a spreadsheet from running a cell as a formula.
+
+    Voter names are typed by strangers and end up in a file the band opens in
+    Excel, where a cell that starts with = + - or @ is code. A leading
+    apostrophe makes it text again.
+    """
+    if isinstance(cell, str) and cell[:1] in ("=", "+", "-", "@", "\t", "\r"):
+        return "'" + cell
+    return cell
+
+
 def _csv(filename: str, header: list[str], rows: list[list]) -> Response:
     buffer = io.StringIO()
     writer = csv.writer(buffer, delimiter=";")
     writer.writerow(header)
-    writer.writerows(rows)
+    writer.writerows([_plain(cell) for cell in row] for row in rows)
     # BOM so Excel on a Czech Windows machine opens it as UTF-8 rather than
     # mangling every accented character.
     return Response(
@@ -678,7 +717,7 @@ def event_qr(event_id: int, request: Request):
     """The QR code for the table cards. Nobody types a URL in the dark."""
     current_admin(request)
     event = events.get(get_db(request).read(), event_id)
-    url = f"{str(request.base_url).rstrip('/')}/e/{event.slug}"
+    url = f"{_public_base(request)}/e/{event.slug}"
     img = qrcode.make(url, image_factory=qrcode.image.svg.SvgPathImage, box_size=12, border=2)
     buffer = io.BytesIO()
     img.save(buffer)
@@ -688,12 +727,5 @@ def event_qr(event_id: int, request: Request):
 @router.get("/events/{event_id}/stream")
 async def admin_stream(event_id: int, request: Request):
     current_admin(request)
-    return StreamingResponse(
-        hub.stream(event_topic(event_id)),
-        media_type="text/event-stream",
-        headers={
-            "Cache-Control": "no-cache, no-transform",
-            "X-Accel-Buffering": "no",
-            "Connection": "keep-alive",
-        },
-    )
+    stamp = await run_in_threadpool(lambda: log.stamp(get_db(request).read(), event_id))
+    return stream_response(event_topic(event_id), votes_topic(event_id), ready={"stamp": stamp})

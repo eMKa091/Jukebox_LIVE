@@ -3,7 +3,12 @@
 {% block topbar_extra %}<span class="livedot"><i></i> Kolo {{ round.ordinal }}</span>{% endblock %}
 {% block content %}
 
-<div data-stream="/e/{{ event.slug }}/stream" hidden></div>
+{# data-jitter: every phone in the room is told to reload in the same instant;
+   each waits a random part of this many milliseconds first. #}
+<div data-stream="/e/{{ event.slug }}/stream" data-stamp="{{ stamp }}" data-jitter="3000" hidden></div>
+
+{# The ballot is counted, so the saved draft for this round can go. #}
+<div data-voted-round="{{ round.id }}" hidden></div>
 
 <h1>Díky, {{ voter_name }}!</h1>
 <p class="lead">Tvé hlasy jsme započítali. Tohle jsi vybral/a:</p>

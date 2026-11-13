@@ -42,6 +42,22 @@ class Settings:
 
     dev_mode: bool
 
+    # The address the audience uses, e.g. https://hlasuj.jukeboxheroes.cz.
+    # QR codes and the links on the Share tab are built from it. Empty means
+    # "whatever address this request came in on", which is right on one host
+    # and wrong the day the console is opened under a second name.
+    public_url: str = ""
+
+    # The zone the band lives in. Start times are typed and shown in it and
+    # stored as UTC; the container itself runs in UTC and is never asked.
+    timezone: str = "Europe/Prague"
+
+    # Threads that serve ordinary requests. Few on purpose: every request is a
+    # handful of SQLite reads, sqlite3 lets go of the interpreter lock on every
+    # row, and forty threads passing that lock around took nine times the CPU
+    # of four to send five hundred phones their ballot (docs/07, R2).
+    worker_threads: int = 4
+
     @property
     def secure_cookies(self) -> bool:
         # Cookies are Secure in production. In dev the app is served over
@@ -80,4 +96,7 @@ def load_settings(*, require_secret: bool = True) -> Settings:
         login_max_attempts=int(os.getenv("JUKEBOX_LOGIN_MAX_ATTEMPTS", "8")),
         login_window_seconds=int(os.getenv("JUKEBOX_LOGIN_WINDOW", "900")),
         dev_mode=dev_mode,
+        public_url=os.getenv("JUKEBOX_PUBLIC_URL", "").strip().rstrip("/"),
+        timezone=os.getenv("JUKEBOX_TIMEZONE", "Europe/Prague"),
+        worker_threads=max(1, int(os.getenv("JUKEBOX_THREADS", "4"))),
     )

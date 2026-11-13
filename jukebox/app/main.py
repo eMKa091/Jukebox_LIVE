@@ -8,9 +8,11 @@ GitHub repository at runtime.
 from __future__ import annotations
 
 import asyncio
+import html
 import logging
 from contextlib import asynccontextmanager
 
+import anyio.to_thread
 from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse, JSONResponse, PlainTextResponse
 from fastapi.staticfiles import StaticFiles
@@ -36,6 +38,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         # Hand the hub the running loop so sync handlers, which execute in
         # Starlette's threadpool, can wake SSE subscribers.
         hub.bind(asyncio.get_running_loop())
+        anyio.to_thread.current_default_thread_limiter().total_tokens = settings.worker_threads
         log.info("jukebox ready: db=%s schema=v%s", settings.database_path, version)
         yield
         app.state.db.close()
@@ -77,7 +80,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                 f'<meta name="viewport" content="width=device-width,initial-scale=1">'
                 f'<link rel="stylesheet" href="/static/app.css">'
                 f'<main class="wrap"><h1>Nepovedlo se</h1>'
-                f'<div class="notice bad"><p>{exc}</p></div>'
+                f'<div class="notice bad"><p>{html.escape(str(exc))}</p></div>'
                 f'<p><a href="/">Zpět na úvod</a></p></main>',
                 status_code=exc.status,
             )

@@ -91,14 +91,23 @@ class Database:
         for index, path in enumerate(MIGRATIONS, start=1):
             if index <= version:
                 continue
-            conn.execute("BEGIN IMMEDIATE")
+            # One transaction, opened and closed inside the script itself:
+            # executescript commits whatever is open before it starts, so a
+            # BEGIN issued from Python never covered the script. The version
+            # bump is in the same transaction -- either the whole migration
+            # is there and counted, or none of it is. (The pragma cannot be
+            # parameterised.)
+            script = (
+                "BEGIN IMMEDIATE;\n"
+                f"{path.read_text(encoding='utf-8')}\n"
+                f"PRAGMA user_version = {index};\n"
+                "COMMIT;"
+            )
             try:
-                conn.executescript(path.read_text(encoding="utf-8"))
-                # executescript commits and ends the transaction, so the pragma
-                # is set separately. It cannot be parameterised.
-                conn.execute(f"PRAGMA user_version = {index}")
+                conn.executescript(script)
             except BaseException:
-                conn.execute("ROLLBACK")
+                if conn.in_transaction:
+                    conn.execute("ROLLBACK")
                 raise
             version = index
         return version

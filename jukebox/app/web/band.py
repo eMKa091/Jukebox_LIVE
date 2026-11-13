@@ -8,12 +8,13 @@ the way `?admin=Band` could be (F3).
 from __future__ import annotations
 
 from fastapi import APIRouter, Request
-from fastapi.responses import HTMLResponse, StreamingResponse
+from fastapi.concurrency import run_in_threadpool
+from fastapi.responses import HTMLResponse
 
-from ..domain import ballots, events, rounds
+from ..domain import ballots, events, log, rounds
 from ..domain.errors import NotPermitted
 from .deps import get_db, get_tokens
-from .hub import event_topic, hub
+from .hub import event_topic, stream_response, votes_topic
 from .render import fragment, render
 
 router = APIRouter(prefix="/band")
@@ -50,6 +51,7 @@ def _live_context(request: Request, event) -> dict:
         "played": played,
         "notes": events.band_notes(conn, event.id),
         "stats": ballots.event_stats(conn, event.id),
+        "stamp": log.stamp(conn, event.id),
     }
 
 
@@ -68,13 +70,9 @@ def live_fragment(token: str, request: Request):
 
 @router.get("/{token}/stream")
 async def stream(token: str, request: Request):
-    event = _resolve(request, token)
-    return StreamingResponse(
-        hub.stream(event_topic(event.id)),
-        media_type="text/event-stream",
-        headers={
-            "Cache-Control": "no-cache, no-transform",
-            "X-Accel-Buffering": "no",
-            "Connection": "keep-alive",
-        },
-    )
+    def current() -> tuple[int, int]:
+        event = _resolve(request, token)
+        return event.id, log.stamp(get_db(request).read(), event.id)
+
+    event_id, stamp = await run_in_threadpool(current)
+    return stream_response(event_topic(event_id), votes_topic(event_id), ready={"stamp": stamp})

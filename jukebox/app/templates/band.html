@@ -6,7 +6,7 @@
 {% endblock %}
 {% block content %}
 
-<div data-stream="/band/{{ token }}/stream" hidden></div>
+<div data-stream="/band/{{ token }}/stream" data-stamp="{{ stamp }}" hidden></div>
 
 <h1>{{ event.name }}</h1>
 <p class="meta">{{ event.venue }}{% if event.venue %} · {% endif %}{{ stats.voters }} hlasujících · {{ stats.votes }} hlasů</p>

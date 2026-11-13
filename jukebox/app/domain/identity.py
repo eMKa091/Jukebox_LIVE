@@ -8,6 +8,7 @@ committed to a public GitHub repository (F8). Argon2id replaces all of that.
 from __future__ import annotations
 
 import sqlite3
+import threading
 import time
 from dataclasses import dataclass, field
 
@@ -24,6 +25,11 @@ _hasher = PasswordHasher()
 
 MIN_PASSWORD_LENGTH = 10
 
+# One argon2 run takes 64 MiB. Nobody has to be signed in to cause one, so the
+# number running at once is capped; a caller who finds both places taken is
+# told to try again rather than parked on a worker thread the voters need.
+_hashing = threading.BoundedSemaphore(2)
+
 
 def hash_password(password: str) -> str:
     return _hasher.hash(password)
@@ -31,7 +37,11 @@ def hash_password(password: str) -> str:
 
 @dataclass
 class LoginThrottle:
-    """Per-username attempt limiting, in process memory.
+    """Attempt limiting per caller, in process memory.
+
+    Counted against where the attempts come from, not against the username
+    they name. Counted per username, eight wrong passwords from anyone, from
+    anywhere, shut the band out of their own console for the window.
 
     In process is the right scope here: there is one container, and a throttle
     that survives a restart would lock the band out of their own gig if the app
@@ -43,21 +53,30 @@ class LoginThrottle:
     window_seconds: int
     _attempts: dict[str, list[float]] = field(default_factory=dict)
 
-    def check(self, username: str) -> None:
+    def check(self, client: str) -> None:
         now = time.monotonic()
-        recent = [t for t in self._attempts.get(username, []) if now - t < self.window_seconds]
-        self._attempts[username] = recent
+        recent = [t for t in self._attempts.get(client, []) if now - t < self.window_seconds]
+        if recent:
+            self._attempts[client] = recent
+        else:
+            self._attempts.pop(client, None)
         if len(recent) >= self.max_attempts:
             wait = int(self.window_seconds - (now - recent[0])) // 60 + 1
             raise NotPermitted(
                 f"Too many failed sign-ins. Try again in about {wait} minute(s)."
             )
 
-    def record_failure(self, username: str) -> None:
-        self._attempts.setdefault(username, []).append(time.monotonic())
+    def record_failure(self, client: str) -> None:
+        if len(self._attempts) > 4096:
+            # Forget callers whose window has passed, so the table cannot grow
+            # without limit under a flood from many addresses.
+            now = time.monotonic()
+            for key in [k for k, v in self._attempts.items() if now - v[-1] >= self.window_seconds]:
+                del self._attempts[key]
+        self._attempts.setdefault(client, []).append(time.monotonic())
 
-    def clear(self, username: str) -> None:
-        self._attempts.pop(username, None)
+    def clear(self, client: str) -> None:
+        self._attempts.pop(client, None)
 
 
 def create_admin(db: Database, *, username: str, password: str, actor: str = "system") -> int:
@@ -93,33 +112,44 @@ def set_password(db: Database, *, username: str, password: str, actor: str) -> N
         log.record(conn, actor=actor, action="admin.password_changed", username=username)
 
 
-def authenticate(db: Database, *, username: str, password: str, throttle: LoginThrottle) -> str:
+def authenticate(
+    db: Database, *, username: str, password: str, throttle: LoginThrottle, client: str = "local"
+) -> str:
     """Return the username on success. Raise on failure.
 
     The same error text covers "no such user" and "wrong password", so the form
-    does not confirm which usernames exist.
+    does not confirm which usernames exist. `client` is whoever is asking --
+    an address, in the web layer -- and is what the throttle counts against.
     """
     username = username.strip()
-    throttle.check(username)
+    throttle.check(client)
 
     row = db.read().execute(
         "SELECT username, password_hash FROM admin_users WHERE username = ?", (username,)
     ).fetchone()
 
-    if row is None:
-        # Spend the time anyway, so a missing user is not faster than a wrong
-        # password.
-        _hasher.hash("timing-equalisation")
-        throttle.record_failure(username)
+    if not _hashing.acquire(blocking=False):
+        raise NotPermitted("Sign-in is busy right now. Try again in a moment.")
+    try:
+        if row is None:
+            # Spend the time anyway, so a missing user is not faster than a
+            # wrong password.
+            _hasher.hash("timing-equalisation")
+            matched = False
+        else:
+            try:
+                _hasher.verify(row["password_hash"], password)
+                matched = True
+            except (VerifyMismatchError, InvalidHashError):
+                matched = False
+    finally:
+        _hashing.release()
+
+    if not matched:
+        throttle.record_failure(client)
         raise NotPermitted("Incorrect username or password.")
 
-    try:
-        _hasher.verify(row["password_hash"], password)
-    except (VerifyMismatchError, InvalidHashError):
-        throttle.record_failure(username)
-        raise NotPermitted("Incorrect username or password.") from None
-
-    throttle.clear(username)
+    throttle.clear(client)
     with db.write() as conn:
         if _hasher.check_needs_rehash(row["password_hash"]):
             # Argon2 parameters get stronger over time; upgrade on next login.
