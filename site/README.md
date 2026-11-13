@@ -20,11 +20,17 @@ site/
 
 ## Look at it
 
+Open `site/public/index.html` in a browser. It needs no server: every path in
+it is relative to the page.
+
+`404.html` is the exception. It stands in for any missing address, however
+deep, so its paths start with a slash and it only looks right when served:
+
 ```sh
 python3 -m http.server 8000 --directory site/public
 ```
 
-Then open <http://localhost:8000>.
+Then open <http://localhost:8000/404.html>.
 
 ## Change it
 
