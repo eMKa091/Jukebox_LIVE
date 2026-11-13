@@ -85,7 +85,8 @@ def create_admin(db: Database, *, username: str, password: str, actor: str = "sy
         raise Invalid("A username is required.")
     if len(password) < MIN_PASSWORD_LENGTH:
         raise Invalid(f"Password must be at least {MIN_PASSWORD_LENGTH} characters.")
-    with db.write() as conn:
+
+    def work(conn: sqlite3.Connection) -> int:
         exists = conn.execute(
             "SELECT 1 FROM admin_users WHERE username = ?", (username,)
         ).fetchone()
@@ -98,11 +99,14 @@ def create_admin(db: Database, *, username: str, password: str, actor: str = "sy
         log.record(conn, actor=actor, action="admin.created", username=username)
         return int(cur.lastrowid)
 
+    return db.transact(work)
+
 
 def set_password(db: Database, *, username: str, password: str, actor: str) -> None:
     if len(password) < MIN_PASSWORD_LENGTH:
         raise Invalid(f"Password must be at least {MIN_PASSWORD_LENGTH} characters.")
-    with db.write() as conn:
+
+    def work(conn: sqlite3.Connection) -> None:
         cur = conn.execute(
             "UPDATE admin_users SET password_hash = ? WHERE username = ?",
             (hash_password(password), username),
@@ -110,6 +114,8 @@ def set_password(db: Database, *, username: str, password: str, actor: str) -> N
         if cur.rowcount == 0:
             raise NotFound(f"No such user: {username}")
         log.record(conn, actor=actor, action="admin.password_changed", username=username)
+
+    db.transact(work)
 
 
 def authenticate(
@@ -150,17 +156,25 @@ def authenticate(
         raise NotPermitted("Incorrect username or password.")
 
     throttle.clear(client)
-    with db.write() as conn:
-        if _hasher.check_needs_rehash(row["password_hash"]):
+    # Hashed before the transaction, not inside it: one argon2 run takes a
+    # fifth of a second, and a write should not hold the database that long.
+    rehashed = (
+        hash_password(password) if _hasher.check_needs_rehash(row["password_hash"]) else None
+    )
+
+    def work(conn: sqlite3.Connection) -> None:
+        if rehashed is not None:
             # Argon2 parameters get stronger over time; upgrade on next login.
             conn.execute(
                 "UPDATE admin_users SET password_hash = ? WHERE username = ?",
-                (hash_password(password), row["username"]),
+                (rehashed, row["username"]),
             )
         conn.execute(
             "UPDATE admin_users SET last_login_at = ? WHERE username = ?",
             (utcnow(), row["username"]),
         )
+
+    db.transact(work)
     return row["username"]
 
 
