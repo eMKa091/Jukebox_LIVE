@@ -244,8 +244,15 @@ not be `async`. Whatever it raises rolls the transaction back and is re-raised.
       emptied whenever it sleeps). `login_failures`, migration 002.
 
 **Step 7 — the data**
-- [ ] 7.1 Import: `migrate_legacy.py` output into the object through an
+- [x] 7.1 Import: `migrate_legacy.py` output into the object through an
       admin-only endpoint, in one transaction, gate G2 run on the result.
+      `app/transfer.py` (dump and load, every table but the accounts),
+      `/admin/data/import` and `/admin/data/export.json`,
+      `scripts/transfer.py push|pull`, `migrate_legacy.py --verify-only`.
+      Done on the local Worker 2026-11-13: an empty object, an account from
+      setup, the legacy file pushed (112 songs, 8 events, 896 round songs,
+      45 votes), a second push refused, the data pulled back out and **G2
+      passed on the pulled copy.**
 - [ ] 7.2 A restore drill with point-in-time recovery on the deployed object.
 
 **Step 8 — 500 phones on the real thing**

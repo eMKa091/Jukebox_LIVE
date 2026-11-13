@@ -3,6 +3,10 @@
 
 Usage:
     python scripts/migrate_legacy.py OLD.db NEW.db [--force]
+    python scripts/migrate_legacy.py OLD.db NEW.db --verify-only
+
+`--verify-only` runs gate G2 on a NEW.db that already exists: on the Worker,
+a copy pulled back out of the app after the import (scripts/transfer.py).
 
 Reads ../jukeboxHeroes-v2/backups/backup-votes.db -- the SQLite blob the old
 app committed to GitHub -- and writes a fresh Jukebox LIVE database.
@@ -365,12 +369,15 @@ def main() -> int:
     parser.add_argument("old", type=Path, help="legacy backup-votes.db")
     parser.add_argument("new", type=Path, help="destination jukebox.db")
     parser.add_argument("--force", action="store_true", help="replace the destination if it exists")
+    parser.add_argument("--verify-only", action="store_true", help="only run gate G2 on an existing NEW.db")
     args = parser.parse_args()
 
-    counts = migrate(args.old, args.new, force=args.force)
-    print(f"Migrated {args.old} -> {args.new}\n")
-    for key in sorted(counts):
-        print(f"  {key:24} {counts[key]}")
+    counts: dict[str, int] = {}
+    if not args.verify_only:
+        counts = migrate(args.old, args.new, force=args.force)
+        print(f"Migrated {args.old} -> {args.new}\n")
+        for key in sorted(counts):
+            print(f"  {key:24} {counts[key]}")
 
     problems = verify(args.old, args.new)
     notes = [p for p in problems if p.startswith("NOTE ")]
@@ -389,6 +396,8 @@ def main() -> int:
 
     print("GATE G2 PASSED: events, votes and per-song tallies all match.")
     print()
+    if args.verify_only:
+        return 0
     if counts.get("ambiguous_names"):
         print(f"Note: {counts['ambiguous_names']} voter name(s) differ from another")
         print("only by whitespace or capitalisation. They were kept separate, because")

@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import csv
 import io
+import json
 from datetime import datetime, timezone
 from urllib.parse import quote
 from zoneinfo import ZoneInfo
@@ -18,8 +19,9 @@ from zoneinfo import ZoneInfo
 import qrcode
 import qrcode.image.svg
 from fastapi import APIRouter, Form, Request, UploadFile, WebSocket
-from fastapi.responses import HTMLResponse, Response
+from fastapi.responses import HTMLResponse, JSONResponse, Response
 
+from .. import transfer
 from ..domain import ballots, events, identity, log, rounds, songs
 from ..domain.errors import DomainError, Invalid, NotFound, NotPermitted
 from .deps import get_db, get_settings, get_throttle, get_tokens
@@ -752,6 +754,38 @@ async def export_results(event_id: int, request: Request):
         ["rank", "artist", "title", "votes"],
         [[i, r["artist"], r["title"], r["votes"]] for i, r in enumerate(rows, start=1)],
     )
+
+
+# ------------------------------------------------------------ all data --
+@router.get("/data/export.json")
+async def export_everything(request: Request):
+    """Every song, event, vote and log row, as one file (app/transfer.py).
+
+    On the Worker this is the copy in your hand that `cli backup` is in the
+    container, and what gate G2 is run on after an import.
+    """
+    current_admin(request)
+    body = json.dumps(transfer.dump(get_db(request).read()), ensure_ascii=False)
+    return Response(
+        body,
+        media_type="application/json",
+        headers={"Content-Disposition": 'attachment; filename="jukebox-live-export.json"'},
+    )
+
+
+@router.post("/data/import")
+async def import_everything(request: Request, file: UploadFile):
+    """Fill an empty app from an export, in one transaction (docs/08, step 7.1)."""
+    user = current_admin(request)
+    try:
+        data = json.loads(file.file.read().decode("utf-8"))
+    except (UnicodeDecodeError, ValueError):
+        return JSONResponse({"error": "That file is not JSON."}, status_code=400)
+    try:
+        counts = transfer.load(get_db(request), data, actor=user)
+    except DomainError as exc:
+        return JSONResponse({"error": str(exc)}, status_code=exc.status)
+    return JSONResponse({"imported": counts})
 
 
 @router.get("/events/{event_id}/qr.svg")

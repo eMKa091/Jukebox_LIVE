@@ -65,6 +65,12 @@ to report success if any of those fail. Admin accounts are deliberately **not**
 migrated; the legacy hashes are unsalted SHA-256 from a database file that sat
 in a public GitHub repository.
 
+**Into the Cloudflare Worker**, which has no file to put it in: migrate to a
+file as above, push the file into the app, pull a copy back out and run gate
+G2 on that copy. The commands are at the top of `scripts/transfer.py`. A push
+is refused by an app that already holds songs or events. `pull` is also the
+copy to keep after every gig.
+
 ---
 
 ## How a gig runs
