@@ -115,7 +115,7 @@ Three rules the code is built around:
 app/
   main.py            FastAPI app, error handling, /healthz, /readyz
   config.py          settings, all from the environment
-  db.py              connections, WAL, migrations via PRAGMA user_version
+  db.py              connections, WAL, migrations recorded in schema_migrations
   sql/               schema, applied in filename order
   domain/            the rules. no HTTP in here
     events.py          draft -> ready -> live -> closed

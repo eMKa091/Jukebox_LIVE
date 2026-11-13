@@ -18,7 +18,7 @@ from fastapi.responses import HTMLResponse, JSONResponse, PlainTextResponse
 from fastapi.staticfiles import StaticFiles
 
 from .config import APP_DIR, Settings, load_settings
-from .db import Database
+from .db import Database, applied_migrations
 from .domain.errors import DomainError, NotPermitted
 from .domain.identity import LoginThrottle
 from .web import admin, band, public
@@ -96,7 +96,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         """Ready means: the database answers and the schema is current."""
         try:
             conn = request.app.state.db.read()
-            version = conn.execute("PRAGMA user_version").fetchone()[0]
+            version = len(applied_migrations(conn))
             conn.execute("SELECT COUNT(*) FROM songs").fetchone()
         except Exception as exc:  # pragma: no cover - only fires on a broken volume
             return PlainTextResponse(f"not ready: {exc}", status_code=503)

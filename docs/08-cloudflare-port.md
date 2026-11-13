@@ -158,7 +158,7 @@ in the log rather than quietly doing something else.
 - [x] 2.3 Remove `Database.write()`; `grep -rn "db.write\|\.write() as" app` is empty.
 - [x] 2.4 Catch `app.db.IntegrityError`, not `sqlite3.IntegrityError`, in
       `events.transition` and `rounds.transition`.
-- [ ] 2.5 Track migrations in a `schema_migrations` table. A database that
+- [x] 2.5 Track migrations in a `schema_migrations` table. A database that
       already has `user_version = 1` must be recognised as migrated.
 
 The pattern, from `songs.py`:

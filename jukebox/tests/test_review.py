@@ -289,8 +289,8 @@ def test_a_failed_migration_leaves_nothing_behind_and_says_why(tmp_path, monkeyp
         database.migrate()
 
     conn = database.read()
+    # Not even schema_migrations: it is created in the migration's transaction.
     assert conn.execute("SELECT COUNT(*) FROM sqlite_master").fetchone()[0] == 0
-    assert conn.execute("PRAGMA user_version").fetchone()[0] == 0
 
 
 def test_the_ranking_lists_exactly_what_the_ballot_offers(db, open_round):
@@ -373,3 +373,46 @@ def test_transact_rolls_back_and_reraises_what_the_callback_raised(db):
     with pytest.raises(Invalid):
         db.transact(work)
     assert db.read().execute("SELECT COUNT(*) FROM songs").fetchone()[0] == 0
+
+
+def test_migrations_are_recorded_by_name_and_applied_once(tmp_path):
+    from app.db import MIGRATIONS, Database, applied_migrations
+
+    database = Database(tmp_path / "x.db")
+    assert database.migrate() == len(MIGRATIONS)
+    assert database.migrate() == len(MIGRATIONS)
+    assert applied_migrations(database.read()) == [p.name for p in MIGRATIONS]
+
+
+def test_a_database_counted_in_user_version_is_recognised_as_migrated(tmp_path):
+    from app.db import MIGRATIONS, Database, applied_migrations
+
+    # Made the way the app did before schema_migrations existed.
+    path = tmp_path / "old.db"
+    old = sqlite3.connect(path)
+    old.executescript(MIGRATIONS[0].read_text(encoding="utf-8"))
+    old.execute("INSERT INTO songs (title, artist) VALUES ('Hello', 'Adele')")
+    old.execute("PRAGMA user_version = 1")
+    old.commit()
+    old.close()
+
+    database = Database(path)
+    assert database.migrate() == len(MIGRATIONS)
+    assert applied_migrations(database.read())[0] == MIGRATIONS[0].name
+    assert database.read().execute("SELECT COUNT(*) FROM songs").fetchone()[0] == 1
+
+
+def test_a_migration_is_split_on_semicolons_outside_quotes_and_comments():
+    from app.db import statements
+
+    script = (
+        "-- a comment; with a semicolon and an apostrophe's\n"
+        "CREATE TABLE a (x TEXT DEFAULT ';');\n"
+        "/* block; comment */ INSERT INTO a VALUES ('it''s; fine');\n"
+        "SELECT \"odd;name\" FROM a"
+    )
+    assert statements(script) == [
+        "CREATE TABLE a (x TEXT DEFAULT ';')",
+        "INSERT INTO a VALUES ('it''s; fine')",
+        'SELECT "odd;name" FROM a',
+    ]
