@@ -6,14 +6,16 @@
     python scripts/transfer.py restore URL USER WHEN     the app as it was at WHEN
 
 For the Worker, which has no file to copy (docs/08-cloudflare-port.md, step 7).
-The password is asked for, or read from JUKEBOX_PASSWORD.
+<address> is where the app answers: https://jukebox-live.<account>.workers.dev
+until the switch, https://hlasuj.jukeboxheroes.cz after it. The password is
+asked for, or read from JUKEBOX_PASSWORD.
 
 The legacy data goes in like this, and gate G2 is then run on what came back
 out, not on the file that went in:
 
     python scripts/migrate_legacy.py ../jukeboxHeroes-v2/backups/backup-votes.db data/legacy.db --force
-    python scripts/transfer.py push data/legacy.db https://hlasuj.jukeboxheroes.cz marek
-    python scripts/transfer.py pull https://hlasuj.jukeboxheroes.cz marek data/pulled.db
+    python scripts/transfer.py push data/legacy.db <address> <user>
+    python scripts/transfer.py pull <address> <user> data/pulled.db
     python scripts/migrate_legacy.py ../jukeboxHeroes-v2/backups/backup-votes.db data/pulled.db --verify-only
 
 `push` is refused by an app that already holds songs or events. `pull` is

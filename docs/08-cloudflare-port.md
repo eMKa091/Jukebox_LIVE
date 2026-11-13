@@ -327,6 +327,30 @@ inside the 10 MB a paid account allows (checked with a dry run).
 **Step 9 — cutover and cleanup**
 - [ ] 9.1 DNS at Cloudflare (nameservers changed at Webglobe), both Workers on
       their names, the admin redirect.
+      **Mind the email.** Public DNS on 2026-11-13: nameservers
+      `ns10`/`ns11.wixdns.net`; the band's mail goes to Webglobe (MX, priority
+      10: `email.webglobe.cz`, `email2`, `email3`, `email4`) with two SPF
+      records (`v=spf1 a mx include:_spf.webglobe.cz -all` and
+      `v=spf2.0/mfrom,pra +a +mx include:_spf2.webglobe.cz -all`); the
+      website is Wix (apex A `185.230.63.107`, `.171`, `.186`; `www` CNAME
+      `cdn3.wixdns.net`); `hlasuj` and `admin` do not exist. The Worker can
+      only take `hlasuj` once the whole domain is a Cloudflare zone (a CNAME
+      from Wix's DNS does not work; partial zones are a Business plan). So:
+      1. Cloudflare dashboard, Add a domain, `jukeboxheroes.cz`, Free plan.
+         It copies the records it finds. **Before going on, check that the
+         four MX and both SPF records are there**, and that every record
+         pointing at Webglobe or Wix is "DNS only" (grey cloud).
+      2. Decide the website: keep Wix for now (keep its A and `www`
+         records, DNS only) or switch to `site/` in the same step (the
+         "Hlasovat" buttons there already point at `hlasuj`).
+      3. At Webglobe, replace the Wix nameservers with the two Cloudflare
+         names. Wait until Cloudflare shows the zone active. Send yourself
+         an email to an address at the domain.
+      4. In `jukebox/worker/wrangler.jsonc`, uncomment the route and
+         `JUKEBOX_PUBLIC_URL` (they are written there), deploy. Cloudflare
+         makes the DNS record and the certificate.
+      5. A redirect rule: `admin.jukeboxheroes.cz/*` to
+         `https://hlasuj.jukeboxheroes.cz/admin`.
 - [ ] 9.2 Delete `Dockerfile`, `deploy/`, `fly.toml`, `compose.yaml`; rewrite
       "Deploying" in `jukebox/README.md`; mark 05-hosting.md superseded.
 - [ ] 9.3 The Streamlit app replaced by one page linking to the new address

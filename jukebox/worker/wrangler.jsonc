@@ -29,10 +29,16 @@
   // Two secrets, set with `pywrangler secret put <NAME>`: JUKEBOX_SECRET_KEY,
   // and JUKEBOX_SETUP_TOKEN for the first account (/admin/setup).
   "vars": {
-    "JUKEBOX_PUBLIC_URL": "https://hlasuj.jukeboxheroes.cz",
     // Where the object and its database live. Fixed at the first deploy.
     "JUKEBOX_JURISDICTION": "eu"
+    // At the switch (docs/08, step 9.1), and not before, add
+    //   "JUKEBOX_PUBLIC_URL": "https://hlasuj.jukeboxheroes.cz"
+    // Until then QR codes and Share links use the address the console was
+    // opened on, which is the one that works.
   },
+
+  // Also at the switch, once jukeboxheroes.cz is a zone on this account:
+  // "routes": [{ "pattern": "hlasuj.jukeboxheroes.cz", "custom_domain": true }],
 
   "observability": { "enabled": true }
 }
