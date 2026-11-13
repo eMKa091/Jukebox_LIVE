@@ -48,7 +48,7 @@ def voter_for_device(
     if len(display_name) > 40:
         display_name = display_name[:40]
 
-    with db.write() as conn:
+    def work(conn: sqlite3.Connection) -> str:
         row = conn.execute(
             "SELECT id FROM voters WHERE event_id = ? AND device_token = ?",
             (event_id, device_token),
@@ -66,6 +66,8 @@ def voter_for_device(
             (voter_id, event_id, display_name, device_token, utcnow()),
         )
         return voter_id
+
+    return db.transact(work)
 
 
 def voter_in_event(conn: sqlite3.Connection, *, event_id: int, device_token: str) -> sqlite3.Row | None:
@@ -105,7 +107,7 @@ def submit(
     if not ballot_id:
         raise Invalid("Missing ballot id.")
 
-    with db.write() as conn:
+    def work(conn: sqlite3.Connection) -> Receipt:
         rnd = rounds.get(conn, round_id)
 
         # A voter belongs to one event and votes only in that event's rounds.
@@ -147,6 +149,8 @@ def submit(
             [(round_id, voter_id, song_id, ballot_id, now) for song_id in song_ids],
         )
         return Receipt(accepted=len(song_ids), replay=False, songs=titles(conn, song_ids))
+
+    return db.transact(work)
 
 
 def titles(conn: sqlite3.Connection, song_ids: list[int]) -> list[str]:
