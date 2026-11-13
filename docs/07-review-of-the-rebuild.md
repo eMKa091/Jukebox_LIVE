@@ -3,8 +3,13 @@
 Written 2026-11-12 against `feat/jukebox-rebuild` at `d8ab0d0`, for a peak of
 **500 voting phones** at one concert. Every file in `jukebox/` was read. Each
 finding below says how it was established: a probe test that passes when the
-defect is real, a measurement, or a reading of the source. Nothing in
-`jukebox/` was changed.
+defect is real, a measurement, or a reading of the source.
+
+> **Status, 2026-11-13: fixed.** Every finding below has been addressed and
+> has a test named after it in `jukebox/tests/test_review.py`. The text of the
+> findings is left as written, as the record of what was wrong. What was done
+> about each, and the three things that could only be fixed on paper, are in
+> [the last section](#what-was-done).
 
 ## What holds
 
@@ -189,6 +194,55 @@ votes export unchanged and Excel evaluates it. Prefix cells that start with
 ## How this was checked
 
 The probes and the load test were run from a scratch folder against this
-checkout and are not in the repository. Each probe is a dozen lines and belongs
-in `jukebox/tests/` next to the fix it guards, inverted so that it fails until
-the fix is made.
+checkout. The probes are now in the repository, inverted, as
+`jukebox/tests/test_review.py`; the load test is not.
+
+## What was done
+
+| # | Fix | Where |
+|---|---|---|
+| R1 | Every page carries the stamp of the event state it was rendered from; the stream names the current stamp on each (re)connect; the page reloads when they differ. A phone back from the lock screen reconnects at once instead of waiting to notice. | `domain/log.py` `stamp`, `web/hub.py`, `static/app.js` |
+| R2 | Requests run on 4 worker threads. Phones wait a random 0–3 s before a reload. Vote counts go to the band display and the console only. | `config.py`, `main.py`, `app.js`, `hub.py` `votes_topic` |
+| R3 | The Litestream config is installed in the image, names the bucket and endpoint from the environment, and the entrypoint keys on `LITESTREAM_BUCKET`. | `Dockerfile`, `deploy/` |
+| R4 | Connection ceiling 2,000. | `fly.toml` |
+| R5 | "Played" is read across the whole event, whichever round it was ticked in. Un-marking works from any round. Played songs are not reported as missing from a later round. | `domain/rounds.py` `PLAYED_IN_EVENT` |
+| R6 | The big button stops the open round, else starts the next pending one. Reopening a finished round is a small button. | `admin/_tab_run.html` |
+| R7 | The question is in a `data-confirm` attribute and the script asks it. | `admin/_tab_data.html`, `app.js` |
+| R8 | Joining needs a live event. A ballot is refused unless its voter and its round belong to the same event. | `web/public.py`, `domain/ballots.py` |
+| R9 | The lockout counts per caller address, not per username. At most two password checks run at once; a third caller is told to try again. | `domain/identity.py`, `web/security.py` |
+| R10 | `data/jukebox.db` is no longer tracked. | — |
+| R11 | Exported cells that begin with `=`, `+`, `-` or `@` get a leading apostrophe. | `web/admin.py` |
+
+The smaller items: a dropped subscriber's stream now ends; the draft is cleared
+by the receipt page, not on submit; start times are read in `Europe/Prague`
+from a setting; a failed migration rolls back whole and reports its own error;
+the ranking lists exactly what the ballot offers; the ballot and song handlers
+are plain functions; the error page escapes its text; dependencies are pinned;
+`JUKEBOX_PUBLIC_URL` fixes the address on QR codes.
+
+**The same load test after the fixes** (500 phones, same machine, the phones in
+the test reloading at once, without the 0–3 s spread the real page now adds):
+
+| | before | after |
+|---|---|---|
+| server CPU for the whole evening | 55 s | 18 s |
+| frames sent to phones | 240,000 | 2,000 |
+| reload onto the ballot, median / 95th percentile | 3.3 s / 6.0 s | 0.9 s / 1.9 s |
+| votes stored | 2,500 of 2,500 | 2,500 of 2,500 |
+
+R1 was also checked in a real browser: a phone on the ballot, the round closed
+in the database with no stream event sent, the phone "woken". It reloaded onto
+the standings by itself.
+
+**Fixed on paper only.** These cannot be run on this machine and are true only
+once the first deploy has shown them to be:
+
+- **R3.** There is no Docker here, so the image was not built and Litestream
+  was not run. The wiring was checked against Litestream v0.3.13's source.
+  The restore drill in `jukebox/README.md` is the proof, and it has not been done.
+- **R4** and the Fly steps in the README. No Fly account was used.
+- **R10.** The file is out of the tree but stays in the history of a public
+  repository. The password of that `marek` account must not be used again.
+
+**Not done:** compression in the app. Behind Cloudflare the 145 KB ballot is
+compressed on the way out; the README says how to switch that on.

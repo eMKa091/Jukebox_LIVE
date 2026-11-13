@@ -43,8 +43,7 @@ Then: <http://localhost:8080/admin> to run a gig, <http://localhost:8080> to vot
 The database lands at `jukebox/data/jukebox.db`. Delete that file for a clean
 slate; set `JUKEBOX_DB` to put it somewhere else.
 
-Tests — all 95 of them, against a real SQLite database and the real legacy
-backup file, no mocks:
+Tests, against a real SQLite database and the real legacy backup file, no mocks:
 
 ```sh
 ./.venv/bin/python -m pytest
@@ -56,6 +55,9 @@ backup file, no mocks:
 ./.venv/bin/python scripts/migrate_legacy.py \
     ../jukeboxHeroes-v2/backups/backup-votes.db data/jukebox.db --force
 ```
+
+`--force` replaces the whole destination file, admin accounts included, so
+migrate first and create accounts afterwards.
 
 It prints what it moved and then runs gate G2 — event counts, vote counts, zero
 orphans, and per-song tallies identical to the old results screen. It refuses
@@ -157,38 +159,136 @@ cookie — the fact that used to live in `st.session_state` and die on refresh.
 
 ## Deploying
 
-Fly.io, Warsaw, about $5/month. See [`../docs/05-hosting.md`](../docs/05-hosting.md)
-for why not AWS or Azure.
+Fly.io, Warsaw, one small machine that is always on, with Cloudflare in front
+for the name and Cloudflare R2 holding the backup. See
+[`../docs/05-hosting.md`](../docs/05-hosting.md) for why not AWS or Azure.
+
+**Nobody has run these steps against a real Fly account yet.** They were
+written from Fly's and Litestream's documentation and the configuration was
+checked by reading, not by deploying. Treat the first run as the test, and do
+the restore drill at the end of it before any event.
+
+Everything runs from inside `jukebox/`.
+
+**1. The tool and an account.** `brew install flyctl`, then `fly auth signup`
+(or `fly auth login`). Fly asks for a card.
+
+**2. The app.** Its name has to be free across all of Fly:
 
 ```sh
-fly launch --no-deploy
-fly volumes create jukebox_data --size 1 --region waw
-fly secrets set JUKEBOX_SECRET_KEY=$(python3 -c 'import secrets; print(secrets.token_urlsafe(32))')
-fly secrets set LITESTREAM_REPLICA_URL=s3://your-bucket/jukebox \
-                LITESTREAM_ACCESS_KEY_ID=... \
-                LITESTREAM_SECRET_ACCESS_KEY=...
-fly deploy
-fly ssh console -C "python -m app.cli create-admin marek"
+fly apps create jukebox-live
 ```
 
-`fly.toml` sets `min_machines_running = 1` deliberately. **Do not scale to
-zero.** A cold start is fine on a Tuesday and unacceptable when the singer has
-just told two hundred people to open the link; the saving is about $2/month.
+If that name is taken, choose another and put it in `fly.toml` as `app = "..."`.
 
-The container refuses to start without `JUKEBOX_SECRET_KEY`, and prints a loud
-warning if `LITESTREAM_REPLICA_URL` is missing — running a real event
-unreplicated is the failure mode this whole project exists to remove.
+**3. The disk.** One gigabyte in Warsaw, where the database file will live:
+
+```sh
+fly volumes create jukebox_data --size 1 --region waw
+```
+
+Fly will warn that a single volume is not redundant. That is expected; the
+copy that protects the votes is the one in step 4.
+
+**4. The backup bucket.** In the Cloudflare dashboard, under R2: create a
+bucket (say `jukebox-backup`), then create an API token with *Object Read &
+Write* on that bucket. Cloudflare shows an access key id, a secret access key,
+and the account's S3 endpoint, `https://<account id>.r2.cloudflarestorage.com`.
+
+**5. The secrets.** They go to Fly, never into the repository:
+
+```sh
+fly secrets set \
+  JUKEBOX_SECRET_KEY=$(python3 -c 'import secrets; print(secrets.token_urlsafe(32))') \
+  LITESTREAM_BUCKET=jukebox-backup \
+  LITESTREAM_ENDPOINT=https://<account id>.r2.cloudflarestorage.com \
+  LITESTREAM_ACCESS_KEY_ID=<access key id> \
+  LITESTREAM_SECRET_ACCESS_KEY=<secret access key>
+```
+
+**6. Deploy, as exactly one machine:**
+
+```sh
+fly deploy --ha=false
+fly status          # one machine, state "started"
+fly logs            # "litestream: replicating to jukebox-backup", then "jukebox ready"
+```
+
+> **One machine, always.** The database is one file on one disk. Two machines
+> would be two separate databases with half the room's votes in each. If
+> `fly status` ever shows two, run `fly scale count 1`.
+
+`fly.toml` also sets `min_machines_running = 1` deliberately. **Do not scale to
+zero.** A cold start is fine on a Tuesday and unacceptable when the singer has
+just told the room to open the link; the saving is about $2/month.
+
+**7. The first admin account:**
+
+```sh
+fly ssh console --pty -C "sh -c 'cd /srv && python -m app.cli create-admin marek'"
+```
+
+The app now answers at `https://<app name>.fly.dev`. Try `/readyz`, then `/admin`.
+
+**8. The real address.** In Cloudflare's DNS for `jukeboxheroes.cz`, add a
+CNAME `hlasuj` pointing at `<app name>.fly.dev`, set to *DNS only* (grey
+cloud) for now. Then:
+
+```sh
+fly certs add hlasuj.jukeboxheroes.cz
+fly certs check hlasuj.jukeboxheroes.cz     # repeat until it says the certificate is issued
+```
+
+Uncomment `JUKEBOX_PUBLIC_URL` in `fly.toml` and `fly deploy --ha=false` again.
+From then on the QR codes and the links on the Share tab say
+`https://hlasuj.jukeboxheroes.cz`, whatever address the console was opened on.
+
+Once the certificate is issued, the record can be switched to *Proxied* (orange
+cloud), with Cloudflare's SSL mode on **Full (strict)**. That gets compression
+of the ballot page for free and tells the app each visitor's own address.
+Leave Cloudflare's Bot Fight Mode off for this name: a whole room on the
+venue's wifi arrives from one address, which is what a bot looks like.
+
+For a separate admin address, make `admin.jukeboxheroes.cz` a Cloudflare
+redirect to `https://hlasuj.jukeboxheroes.cz/admin`. The app stays on one name.
+
+**9. The restore drill.** Do it now, and again once a quarter. A backup nobody
+has restored is a hope.
+
+```sh
+fly ssh console -C "sh -c 'cd /srv && litestream restore -o /tmp/drill.db /data/jukebox.db && JUKEBOX_DB=/tmp/drill.db python -m app.cli stats'"
+```
+
+It pulls the database back out of R2 into a scratch file and prints what is in
+that copy: songs, admin accounts, events and their votes. If the numbers are
+the ones the console shows, the copy in the bucket is real.
+
+### Before each event
+
+`fly status` shows one started machine; `/readyz` answers; `fly logs` shows no
+line from litestream that contains "error". If a rehearsal with real phones
+shows the ballot arriving slowly, the machine can be made larger for the
+evening with `fly scale vm shared-cpu-2x` and back afterwards.
 
 ### Environment
 
 | Variable | Required | Meaning |
 |---|---|---|
 | `JUKEBOX_SECRET_KEY` | **yes** in production | signs admin sessions and band links |
+| `JUKEBOX_PUBLIC_URL` | once the name exists | the audience's address; QR codes and Share links are built from it |
 | `JUKEBOX_DB` | no | database path, default `./data/jukebox.db` |
 | `JUKEBOX_DEV` | no | relaxes cookie `Secure`, generates a throwaway secret |
+| `JUKEBOX_TIMEZONE` | no | the zone start times are typed and shown in, default `Europe/Prague` |
+| `JUKEBOX_THREADS` | no | worker threads, default 4; more is slower, see `app/config.py` |
 | `JUKEBOX_SESSION_MAX_AGE` | no | admin session lifetime, default 12h |
-| `JUKEBOX_LOGIN_MAX_ATTEMPTS` | no | failures before lockout, default 8 |
-| `LITESTREAM_REPLICA_URL` | in production | S3-compatible replica target |
+| `JUKEBOX_LOGIN_MAX_ATTEMPTS` | no | failed sign-ins from one address before a lockout, default 8 |
+| `LITESTREAM_BUCKET` | in production | the bucket the database is replicated to; unset means no replication |
+| `LITESTREAM_ENDPOINT` | with the bucket | the bucket's S3 endpoint, `https://…` |
+| `LITESTREAM_ACCESS_KEY_ID`, `LITESTREAM_SECRET_ACCESS_KEY` | with the bucket | the bucket's keys |
+
+The container refuses to start without `JUKEBOX_SECRET_KEY`, and prints a loud
+warning if `LITESTREAM_BUCKET` is missing — running a real event unreplicated
+is the failure mode this whole project exists to remove.
 
 ### Operator commands
 
@@ -199,14 +299,7 @@ python -m app.cli backup /path/to/snapshot.db     # consistent, app still runnin
 python -m app.cli stats
 ```
 
-### Restore drill
-
-Do this once a quarter. A backup nobody has restored is a hope.
-
-```sh
-litestream restore -o /tmp/restored.db s3://your-bucket/jukebox
-sqlite3 /tmp/restored.db "SELECT COUNT(*) FROM votes;"
-```
+On Fly, run them as in step 7: `fly ssh console --pty -C "sh -c 'cd /srv && python -m app.cli …'"`.
 
 ---
 

@@ -11,6 +11,7 @@ querying the shipped production database.
 | [04-target-architecture.md](04-target-architecture.md) | The stack, the state machine, the request surface |
 | [05-hosting.md](05-hosting.md) | Where to run it and what it costs |
 | [06-migration-plan.md](06-migration-plan.md) | Ten phases with gates, ~13–16 days |
+| [07-review-of-the-rebuild.md](07-review-of-the-rebuild.md) | The rebuild checked for a room of 500 phones, and what was fixed |
 
 ## The short version
 
@@ -50,3 +51,13 @@ The rebuild is written and tested: [`../jukebox/`](../jukebox/).
 
 Remaining: deploy, restore drill, load test, dress rehearsal, cutover —
 phases 7 to 10 of [06-migration-plan.md](06-migration-plan.md).
+
+## Status — 2026-11-13
+
+The rebuild was reviewed for a peak of 500 voting phones
+([07-review-of-the-rebuild.md](07-review-of-the-rebuild.md)) and its findings
+are fixed, each with a regression test. Hosting is decided: Fly.io, with
+Cloudflare in front and R2 for the backup. The steps are in
+[`../jukebox/README.md`](../jukebox/README.md) under "Deploying". They have not
+been run yet, so phases 7 to 10 remain exactly as above. The band's website
+now lives in [`../site/`](../site/).
