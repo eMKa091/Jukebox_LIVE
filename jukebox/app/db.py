@@ -15,14 +15,23 @@ from __future__ import annotations
 
 import sqlite3
 import threading
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from contextlib import contextmanager
+from typing import TypeVar
 from datetime import datetime, timezone
 from pathlib import Path
 
 from .config import APP_DIR
 
 SQL_DIR = APP_DIR / "sql"
+
+T = TypeVar("T")
+
+# What the rules catch when a constraint refuses a write. Named here, not
+# taken from sqlite3 where it is used, so that a second backend -- the Durable
+# Object's built-in SQLite, docs/08-cloudflare-port.md -- can raise the same
+# thing without the rules knowing which database they are talking to.
+IntegrityError = sqlite3.IntegrityError
 
 # Migrations are applied in filename order and tracked in PRAGMA user_version.
 # Alembic would be a reasonable choice at a larger size; at this size it is more
@@ -80,6 +89,20 @@ class Database:
             conn.execute("ROLLBACK")
             raise
         conn.execute("COMMIT")
+
+    def transact(self, fn: Callable[[sqlite3.Connection], T]) -> T:
+        """Run `fn(conn)` inside one transaction and return what it returns.
+
+        Whatever `fn` raises rolls the transaction back and is raised again.
+        `fn` must not be async: the whole of it is one uninterrupted unit.
+
+        This is the form the rules use (docs/08-cloudflare-port.md, step 2).
+        A callback rather than a `with` block because the Durable Object's
+        SQLite only offers transactions as a callback, and the rules should
+        read the same on both.
+        """
+        with self.write() as conn:
+            return fn(conn)
 
     def read(self) -> sqlite3.Connection:
         return self.connect()

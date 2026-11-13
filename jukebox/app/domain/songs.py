@@ -61,7 +61,8 @@ def add(db: Database, *, title: str, artist: str, actor: str) -> Song:
     title, artist = title.strip(), artist.strip()
     if not title or not artist:
         raise Invalid("A song needs both a title and an artist.")
-    with db.write() as conn:
+
+    def work(conn: sqlite3.Connection) -> Song:
         existing = conn.execute(
             "SELECT id, title, artist, retired_at FROM songs"
             " WHERE lower(artist) = lower(?) AND lower(title) = lower(?)",
@@ -81,9 +82,11 @@ def add(db: Database, *, title: str, artist: str, actor: str) -> Song:
         log.record(conn, actor=actor, action="song.added", song_id=song_id, title=title, artist=artist)
         return Song(id=song_id, title=title, artist=artist, retired=False)
 
+    return db.transact(work)
+
 
 def set_retired(db: Database, *, song_id: int, retired: bool, actor: str) -> None:
-    with db.write() as conn:
+    def work(conn: sqlite3.Connection) -> None:
         if conn.execute("SELECT 1 FROM songs WHERE id = ?", (song_id,)).fetchone() is None:
             raise NotFound(f"Song {song_id} does not exist.")
         conn.execute(
@@ -96,6 +99,8 @@ def set_retired(db: Database, *, song_id: int, retired: bool, actor: str) -> Non
             action="song.retired" if retired else "song.restored",
             song_id=song_id,
         )
+
+    db.transact(work)
 
 
 @dataclass
@@ -157,8 +162,9 @@ def parse_csv(raw: bytes) -> list[tuple[str, str]]:
 def import_csv(db: Database, raw: bytes, *, actor: str) -> ImportReport:
     """Import a CSV in one transaction. Either all of it lands or none does."""
     pairs = parse_csv(raw)
-    report = ImportReport()
-    with db.write() as conn:
+
+    def work(conn: sqlite3.Connection) -> ImportReport:
+        report = ImportReport()
         for line_no, (title, artist) in enumerate(pairs, start=2):
             if not title or not artist:
                 report.skipped.append(f"line {line_no}: missing title or artist")
@@ -185,4 +191,6 @@ def import_csv(db: Database, raw: bytes, *, actor: str) -> ImportReport:
             duplicates=report.duplicates,
             skipped=len(report.skipped),
         )
-    return report
+        return report
+
+    return db.transact(work)

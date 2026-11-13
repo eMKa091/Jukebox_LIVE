@@ -353,3 +353,23 @@ def test_the_draft_is_kept_until_the_ballot_is_counted(client, open_round, db):
     receipt = client.post(f"/e/{event.slug}/ballot", follow_redirects=True,
                           data={"ballot_id": "a", "round_id": open_round.id, "song_ids": [pick]}).text
     assert f'data-voted-round="{open_round.id}"' in receipt
+
+
+# ---------------------------------------------- docs/08, the storage seam --
+def test_transact_commits_what_the_callback_did_and_returns_its_result(db):
+    def work(conn):
+        conn.execute("INSERT INTO songs (title, artist) VALUES ('A', 'B')")
+        return conn.execute("SELECT COUNT(*) FROM songs").fetchone()[0]
+
+    assert db.transact(work) == 1
+    assert db.read().execute("SELECT COUNT(*) FROM songs").fetchone()[0] == 1
+
+
+def test_transact_rolls_back_and_reraises_what_the_callback_raised(db):
+    def work(conn):
+        conn.execute("INSERT INTO songs (title, artist) VALUES ('A', 'B')")
+        raise Invalid("no")
+
+    with pytest.raises(Invalid):
+        db.transact(work)
+    assert db.read().execute("SELECT COUNT(*) FROM songs").fetchone()[0] == 0
