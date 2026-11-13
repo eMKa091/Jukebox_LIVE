@@ -419,3 +419,20 @@ def test_a_migration_is_split_on_semicolons_outside_quotes_and_comments():
         "INSERT INTO a VALUES ('it''s; fine')",
         'SELECT "odd;name" FROM a',
     ]
+
+
+def test_settings_can_come_from_a_mapping_instead_of_the_process(monkeypatch):
+    """The Worker has no process environment of its own; it hands over env."""
+    from app.config import SETTINGS_KEYS
+
+    monkeypatch.setenv("JUKEBOX_PUBLIC_URL", "https://from-the-process.example")
+    settings = load_settings({
+        "JUKEBOX_SECRET_KEY": "from-the-mapping",
+        "JUKEBOX_PUBLIC_URL": "https://hlasuj.example.cz/",
+        "JUKEBOX_LOGIN_MAX_ATTEMPTS": "3",
+    })
+    assert settings.secret_key == "from-the-mapping"
+    assert settings.public_url == "https://hlasuj.example.cz"
+    assert settings.login_max_attempts == 3
+    assert not settings.dev_mode
+    assert "JUKEBOX_SECRET_KEY" in SETTINGS_KEYS

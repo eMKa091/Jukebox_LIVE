@@ -181,7 +181,7 @@ not be `async`. Whatever it raises rolls the transaction back and is re-raised.
       object there is one thread and SQL is in-process, so this is correct
       there. It is NOT correct for the container, so from here on the
       container version is no longer the one to run at a concert.)
-- [ ] 3.2 `load_settings(env)` takes a mapping; `os.environ` is only the default.
+- [x] 3.2 `load_settings(env)` takes a mapping; `os.environ` is only the default.
 - [ ] 3.3 Templates load by whatever U6 found.
 
 **Step 4 — live updates over WebSockets**
