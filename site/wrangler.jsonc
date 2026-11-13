@@ -1,0 +1,20 @@
+// The band website on Cloudflare: static files, no code running on the server.
+//
+//   cd site && npx wrangler deploy
+//
+// Requests for static files are free and unlimited on Cloudflare, on any plan.
+{
+  "name": "jukeboxheroes-web",
+  "compatibility_date": "2026-11-01",
+  "assets": {
+    "directory": "./public",
+    "not_found_handling": "404-page"
+  }
+
+  // Once jukeboxheroes.cz is a zone in the Cloudflare account, uncomment this
+  // to serve the site on the real address (see README.md, "Going live").
+  // ,"routes": [
+  //   { "pattern": "www.jukeboxheroes.cz", "custom_domain": true },
+  //   { "pattern": "jukeboxheroes.cz", "custom_domain": true }
+  // ]
+}
