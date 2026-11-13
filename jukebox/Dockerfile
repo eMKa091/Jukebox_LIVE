@@ -7,7 +7,7 @@ FROM python:3.12-slim AS base
 # Litestream streams the SQLite write-ahead log to object storage continuously.
 # It is the whole reason SQLite is safe here: the recovery point is seconds,
 # not "whenever an admin last pressed a button".
-FROM litestream/litestream:0.3 AS litestream
+FROM litestream/litestream:0.3.13 AS litestream
 
 FROM base
 ENV PYTHONUNBUFFERED=1 \
@@ -25,6 +25,10 @@ COPY app ./app
 COPY scripts ./scripts
 COPY deploy/entrypoint.sh /usr/local/bin/entrypoint.sh
 RUN chmod +x /usr/local/bin/entrypoint.sh
+# Where litestream looks when it is told nothing else. Without this file in
+# this place both of the entrypoint's litestream commands stop with "config
+# file not found" and the container never reaches the app.
+COPY deploy/litestream.yml /etc/litestream.yml
 
 # The volume mount point. JUKEBOX_DB points here.
 RUN mkdir -p /data
