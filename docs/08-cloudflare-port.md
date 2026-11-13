@@ -152,7 +152,7 @@ in the log rather than quietly doing something else.
       `app/db.py`. `write()` stays until 2.3.
 - [x] 2.2a `domain/songs.py` converted, as the worked example of the pattern.
 - [x] 2.2b `domain/events.py`
-- [ ] 2.2c `domain/rounds.py`
+- [x] 2.2c `domain/rounds.py`
 - [ ] 2.2d `domain/ballots.py`
 - [ ] 2.2e `domain/identity.py`
 - [ ] 2.3 Remove `Database.write()`; `grep -rn "db.write\|\.write() as" app` is empty.

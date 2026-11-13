@@ -93,7 +93,7 @@ def open_round_of(conn: sqlite3.Connection, event_id: int) -> Round | None:
 
 def add_round(db: Database, *, event_id: int, actor: str) -> Round:
     """Append a round to an event, carrying forward the unplayed songs."""
-    with db.write() as conn:
+    def work(conn: sqlite3.Connection) -> Round:
         rows = conn.execute(
             "SELECT ordinal, id FROM rounds WHERE event_id = ? ORDER BY ordinal DESC LIMIT 1",
             (event_id,),
@@ -118,11 +118,14 @@ def add_round(db: Database, *, event_id: int, actor: str) -> Round:
         )
         return get(conn, round_id)
 
+    return db.transact(work)
+
 
 def set_max_votes(db: Database, *, round_id: int, max_votes: int, actor: str) -> Round:
     if not 1 <= max_votes <= 50:
         raise Invalid("Votes per round must be between 1 and 50.")
-    with db.write() as conn:
+
+    def work(conn: sqlite3.Connection) -> Round:
         rnd = get(conn, round_id)
         if rnd.state == "open":
             # Changing the limit mid-round would mean some ballots were cast
@@ -139,6 +142,8 @@ def set_max_votes(db: Database, *, round_id: int, max_votes: int, actor: str) ->
         )
         return get(conn, round_id)
 
+    return db.transact(work)
+
 
 def transition(db: Database, *, round_id: int, to: str, actor: str) -> Round:
     """Open or close a round.
@@ -148,7 +153,8 @@ def transition(db: Database, *, round_id: int, to: str, actor: str) -> Round:
     """
     if to not in STATES:
         raise Invalid(f"{to!r} is not a round state.")
-    with db.write() as conn:
+
+    def work(conn: sqlite3.Connection) -> Round:
         rnd = get(conn, round_id)
         if rnd.state == to:
             return rnd
@@ -197,6 +203,8 @@ def transition(db: Database, *, round_id: int, to: str, actor: str) -> Round:
         )
         return get(conn, round_id)
 
+    return db.transact(work)
+
 
 # --------------------------------------------------------------------------
 # Song assignment
@@ -204,7 +212,7 @@ def transition(db: Database, *, round_id: int, to: str, actor: str) -> Round:
 
 def assign_all_songs(db: Database, *, round_id: int, actor: str) -> int:
     """Put every song from the master list into this round."""
-    with db.write() as conn:
+    def work(conn: sqlite3.Connection) -> int:
         rnd = get(conn, round_id)
         cur = conn.execute(
             "INSERT INTO round_songs (round_id, song_id)"
@@ -221,6 +229,8 @@ def assign_all_songs(db: Database, *, round_id: int, actor: str) -> int:
             added=cur.rowcount,
         )
         return cur.rowcount
+
+    return db.transact(work)
 
 
 def songs_not_in_round(conn: sqlite3.Connection, round_id: int) -> list[sqlite3.Row]:
@@ -260,7 +270,8 @@ def add_songs(db: Database, *, round_id: int, song_ids: list[int], actor: str) -
     """
     if not song_ids:
         return 0
-    with db.write() as conn:
+
+    def work(conn: sqlite3.Connection) -> int:
         rnd = get(conn, round_id)
         placeholders = ",".join("?" * len(song_ids))
 
@@ -295,6 +306,8 @@ def add_songs(db: Database, *, round_id: int, song_ids: list[int], actor: str) -
         )
         return added
 
+    return db.transact(work)
+
 
 def set_excluded(db: Database, *, round_id: int, song_ids: list[int], excluded: bool, actor: str) -> int:
     """Take songs out of a round, or put them back.
@@ -304,7 +317,8 @@ def set_excluded(db: Database, *, round_id: int, song_ids: list[int], excluded: 
     """
     if not song_ids:
         return 0
-    with db.write() as conn:
+
+    def work(conn: sqlite3.Connection) -> int:
         rnd = get(conn, round_id)
         placeholders = ",".join("?" * len(song_ids))
         cur = conn.execute(
@@ -322,6 +336,8 @@ def set_excluded(db: Database, *, round_id: int, song_ids: list[int], excluded: 
         )
         return cur.rowcount
 
+    return db.transact(work)
+
 
 def set_played(db: Database, *, round_id: int, song_ids: list[int], played: bool, actor: str) -> int:
     """Mark songs the band actually played.
@@ -337,7 +353,8 @@ def set_played(db: Database, *, round_id: int, song_ids: list[int], played: bool
     """
     if not song_ids:
         return 0
-    with db.write() as conn:
+
+    def work(conn: sqlite3.Connection) -> int:
         rnd = get(conn, round_id)
         placeholders = ",".join("?" * len(song_ids))
         if played:
@@ -363,6 +380,8 @@ def set_played(db: Database, *, round_id: int, song_ids: list[int], played: bool
         )
         return cur.rowcount
 
+    return db.transact(work)
+
 
 def _carry_forward(conn: sqlite3.Connection, *, from_round: int, to_round: int) -> int:
     """Copy the still-available songs from one round into the next.
@@ -384,7 +403,7 @@ def _carry_forward(conn: sqlite3.Connection, *, from_round: int, to_round: int) 
 
 def carry_forward(db: Database, *, from_round: int, actor: str) -> int:
     """Populate the next round from this one. Used from the admin console."""
-    with db.write() as conn:
+    def work(conn: sqlite3.Connection) -> int:
         rnd = get(conn, from_round)
         nxt = conn.execute(
             "SELECT id FROM rounds WHERE event_id = ? AND ordinal = ?",
@@ -402,6 +421,8 @@ def carry_forward(db: Database, *, from_round: int, actor: str) -> int:
             songs=moved,
         )
         return moved
+
+    return db.transact(work)
 
 
 def votable_songs(conn: sqlite3.Connection, round_id: int) -> list[sqlite3.Row]:
