@@ -159,6 +159,12 @@ cookie — the fact that used to live in `st.session_state` and die on refresh.
 
 ## Deploying
 
+> **Superseded on 2026-11-13.** The decision is now to run everything on
+> Cloudflare, with the app as a Worker and a Durable Object. The plan and its
+> checklist are in [`../docs/08-cloudflare-port.md`](../docs/08-cloudflare-port.md).
+> The Fly.io steps below describe the container version, which is still the
+> one that runs, and stay here until that port is finished.
+
 Fly.io, Warsaw, one small machine that is always on, with Cloudflare in front
 for the name and Cloudflare R2 holding the backup. See
 [`../docs/05-hosting.md`](../docs/05-hosting.md) for why not AWS or Azure.

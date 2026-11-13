@@ -12,6 +12,7 @@ querying the shipped production database.
 | [05-hosting.md](05-hosting.md) | Where to run it and what it costs |
 | [06-migration-plan.md](06-migration-plan.md) | Ten phases with gates, ~13–16 days |
 | [07-review-of-the-rebuild.md](07-review-of-the-rebuild.md) | The rebuild checked for a room of 500 phones, and what was fixed |
+| [08-cloudflare-port.md](08-cloudflare-port.md) | **The current plan and its checklist:** everything on Cloudflare, the app as a Python Worker with a Durable Object |
 
 ## The short version
 
