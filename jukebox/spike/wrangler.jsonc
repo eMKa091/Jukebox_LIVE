@@ -1,0 +1,11 @@
+// Throwaway spike for docs/08 step 1. Deleted once U1-U9 are answered.
+{
+  "name": "jukebox-spike",
+  "main": "src/entry.py",
+  "compatibility_date": "2026-11-01",
+  "compatibility_flags": ["python_workers"],
+  "durable_objects": {
+    "bindings": [{ "name": "JUKEBOX", "class_name": "Jukebox" }]
+  },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["Jukebox"] }]
+}

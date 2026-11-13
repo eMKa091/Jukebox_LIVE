@@ -4,7 +4,9 @@
 reads this first, does the next unticked step, ticks it, adds a line to the
 log at the bottom, and commits. Nothing about the port lives only in a chat.
 
-- Branch: `feat/cloudflare-workers` (cut from `main` at `1e5a9a0`).
+- Branch: `main`. The work began on `feat/cloudflare-workers` (cut from `main`
+  at `1e5a9a0`); on 2026-11-13 Filip asked for it to go straight to `main`, and
+  `main` was fast-forwarded to that branch, which is now finished with.
 - Decided by Filip, 2026-11-13: **everything runs on Cloudflare, the app stays
   in Python, and the app moves from a container to a Worker with a Durable
   Object.** This supersedes the Fly.io plan in [05-hosting.md](05-hosting.md)
@@ -100,19 +102,23 @@ relying on a number.
 ## 4. What the documentation does not say
 
 Each of these is answered by running it, in step 1, and the answer is written
-here next to the question.
+here next to the question. Answered 2026-11-13 on the local runtime
+(`pywrangler dev`, wrangler 4.161.0, workers-py 1.17.9, Pyodide's Python 3.14)
+by a throwaway spike, one probe per question. It is in git history:
+`git log --diff-filter=D --oneline -- jukebox/spike` names the commit that
+deleted it; `git show <that commit>^:jukebox/spike/src/entry.py` prints it.
 
 | # | Question | If the answer is no | Answer |
 |---|---|---|---|
-| U1 | Do FastAPI, Jinja2, python-multipart, itsdangerous, qrcode and tzdata import in a Python Worker? | replace the one that does not | |
-| U2 | Can the FastAPI app be served from inside a Durable Object's `fetch` (via the `asgi` module)? | route by hand in the object, keep the templates | |
-| U3 | Do `SELECT last_insert_rowid()` and `SELECT changes()` work through `sql.exec`? | `INSERT … RETURNING id`; count before and after | |
-| U4 | Does a Python exception raised inside a `transactionSync` callback roll back and arrive in Python as itself? | catch and re-raise in the adapter | |
-| U5 | Are foreign keys enforced (`ON DELETE CASCADE`), and do partial unique indexes and `CHECK` work? | enforce the cascade in `events.delete` | |
-| U6 | Can templates and the `.sql` file be read from the bundle with ordinary file access? | load them into a dict at import | |
-| U7 | Does `argon2` import, and does one hash fit in memory? | PBKDF2-SHA256 from `hashlib` | |
-| U8 | Does the Hibernation API work from Python as in the docs' example (`acceptWebSocket`, `getWebSockets`)? | ordinary WebSockets, billed while open | |
-| U9 | Speed: how long does one ballot page (420 songs) take to render in the object? | the fallback design in section 2 | |
+| U1 | Do FastAPI, Jinja2, python-multipart, itsdangerous, qrcode and tzdata import in a Python Worker? | replace the one that does not | **Yes**, all six. `ZoneInfo("Europe/Prague")` works from tzdata; qrcode writes its SVG. |
+| U2 | Can the FastAPI app be served from inside a Durable Object's `fetch` (via the `asgi` module)? | route by hand in the object, keep the templates | **Yes**: `await asgi.fetch(app, request, self.env)` from the object's `fetch`. Cookies in, several `Set-Cookie` out, form posts with repeated fields, 303s: as in the container. Two catches. A plain `def` handler fails with `RuntimeError: can't start new thread` (FastAPI runs it on a thread), so 3.1 is required, not a tidy-up. And `asgi.fetch` runs the app's lifespan on every request, so the object's app has none: it migrates in the object's constructor. |
+| U3 | Do `SELECT last_insert_rowid()` and `SELECT changes()` work through `sql.exec`? | `INSERT … RETURNING id`; count before and after | **Yes**, both, and `RETURNING` too. The cursor has no `lastrowid`, only `rowsWritten`; the adapter asks `last_insert_rowid()` after an INSERT. `None` binds as NULL, `bytes` as a BLOB, 100 parameters are accepted. **A cursor not read to the end blocks DDL** (`SQLITE_LOCKED` on the next `DROP TABLE`), so the adapter reads every result in full at once. |
+| U4 | Does a Python exception raised inside a `transactionSync` callback roll back and arrive in Python as itself? | catch and re-raise in the adapter | **Yes**: the insert was rolled back and the same exception class arrived; the callback's return value comes back too. Constraint failures arrive as `pyodide.ffi.JsException` whose message names them (`UNIQUE constraint failed: …: SQLITE_CONSTRAINT`), so the adapter turns those into `IntegrityError`. `BEGIN` is refused, as documented. **`PRAGMA user_version` is refused (`SQLITE_AUTH`)**, so 2.5 is required. |
+| U5 | Are foreign keys enforced (`ON DELETE CASCADE`), and do partial unique indexes and `CHECK` work? | enforce the cascade in `events.delete` | **Yes**, all three, with `PRAGMA foreign_keys` already 1; a dangling foreign key is refused. `lower()` folds ASCII only, exactly as the stdlib's SQLite does, so the songs index behaves the same. |
+| U6 | Can templates and the `.sql` file be read from the bundle with ordinary file access? | load them into a dict at import | **Yes**: wrangler attaches every non-Python file under `src/` as a text module, and `Path(__file__).parent / …` reads it. |
+| U7 | Does `argon2` import, and does one hash fit in memory? | PBKDF2-SHA256 from `hashlib` | **Yes**: argon2-cffi imports and one default hash (64 MiB) took 209 ms locally. The fallback would not have worked: Pyodide's `hashlib` has no `pbkdf2_hmac`. |
+| U8 | Does the Hibernation API work from Python as in the docs' example (`acceptWebSocket`, `getWebSockets`)? | ordinary WebSockets, billed while open | **Yes**: `self.ctx.acceptWebSocket(server, to_js(["event:1"]))` (the tags must be a JS array; a Python list is refused), `getWebSockets(tag)`, `getTags`, attachments, and `webSocketMessage` / `webSocketClose` as methods. One broadcast reached 20 sockets in 25 ms. `webSocketClose` must call `ws.close(code, …)`, or the client waits out its close timeout. |
+| U9 | Speed: how long does one ballot page (420 songs) take to render in the object? | the fallback design in section 2 | **Locally only, so not answered yet.** 500 requests, 50 at a time, for a 420-row page rendered by FastAPI in the object: 92 a second, median 345 ms, p95 1.6 s. A trivial response gave 175 a second whether the object or the entry Worker sent it, so locally most of the cost is the fixed cost of a Python request in one isolate; on Cloudflare the entry Worker's share of it is spread over many isolates, the object's is not. The need is about 170 a second (500 phones reloading over 3 s). Close, and only 8.2 on the deployed app can say. Cheap help before the fallback: render the song list once per round state and reuse it. Do not time inside a request on Cloudflare: its clock stands still while code runs. |
 
 ## 5. Checklist
 
@@ -124,13 +130,21 @@ in the log rather than quietly doing something else.
 **Step 0 — record the decision**
 - [x] This file. Load-test scripts brought into the repo (`jukebox/tools/loadtest/`).
 
-**Step 1 — answer U1–U9 on the real runtime** *(needs tools this Mac does not
-have: `uv` and `pywrangler`, see the Python packages page; and Filip's
-`wrangler login` for the one deploy)*
-- [ ] Install the tooling; note the exact commands here.
-- [ ] A throwaway Worker + Durable Object in `jukebox/spike/` that answers
-      U1–U8 locally, one small probe each. Write each answer in section 4.
-- [ ] Deploy the spike once to Filip's account and time U9 there.
+**Step 1 — answer U1–U9 on the real runtime**
+- [x] Install the tooling: `brew install uv` (0.13.8), nothing else. A
+      project names `workers-py` and `workers-runtime-sdk` in its
+      `pyproject.toml` (`[dependency-groups] dev`); `uv run pywrangler dev`
+      then fetches them into the project's own `.venv`, vendors the app's
+      packages into `python_modules/`, fetches wrangler through `npx` (Node
+      25 is on this Mac) and starts the local runtime. `uv run pywrangler
+      deploy` deploys, after `uv run pywrangler login` (Filip's account). The
+      runtime's Python is Pyodide's 3.14, not the virtualenv's.
+- [x] A throwaway Worker + Durable Object in `jukebox/spike/` that answers
+      U1–U8 locally, one small probe each. Answers in section 4.
+- [x] ~~Deploy the spike once to Filip's account and time U9 there.~~
+      Changed: the spike's page is not the real ballot, and its local timing
+      showed the cost is mostly per request, not per template. The deployed
+      timing is taken once, on the real app, in 8.2.
 - [ ] Delete `jukebox/spike/` once the answers are written down.
 
 **Step 2 — the storage seam** *(pure refactor; the container app keeps working)*
